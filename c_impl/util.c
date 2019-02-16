@@ -110,6 +110,12 @@ StringBuilder *new_sb(void) {
   return sb;
 }
 
+StringBuilder *new_sb_with_char(char *buf) {
+  StringBuilder *sb = new_sb();
+  sb_append(sb, buf);
+  return sb;
+}
+
 static void sb_grow(StringBuilder *sb, int len) {
   if (sb->len + len <= sb->capacity)
     return;

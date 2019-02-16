@@ -139,7 +139,7 @@ void vs_set(VariableStore *vs, StringBuilder *key, TValue *value) {
 // Make a new Env
 Env *new_env() {
   Env *env = xmalloc(sizeof(Env));
-  env->vs = NULL;
+  env->vs = new_vs();
   return env;
 }
 

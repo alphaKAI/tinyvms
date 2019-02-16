@@ -44,9 +44,9 @@ TValueDeserializeResult *deserialize_to_tva(Vector *serialized,
     case Array: {
       long long int len = (long long int)serialized->data[idx++];
       Vector *vec = new_vec();
-      vec->capacity = serialized->capacity - idx;
-      vec->len = serialized->len - idx;
-      vec->data = serialized->data[idx];
+      for (long long int i = idx; i < serialized->len; i++) {
+        vec_push(vec, serialized);
+      }
 
       TValueDeserializeResult *tvdr = deserialize_to_tva(vec, len);
       TValueArray *arr = tvdr->array;
@@ -71,13 +71,14 @@ void procWith1Arg(Vector *code, Vector *serialized, int type,
   vec_pushi(code, type);
   /* vec = serialized[idx..$] */
   Vector *vec = new_vec();
-  vec->capacity = serialized->capacity - *idx;
-  vec->len = serialized->len - *idx;
-  vec->data = serialized->data[*idx];
+
+  for (long long int i = *idx; i < serialized->len; i++) {
+    vec_push(vec, serialized->data[i]);
+  }
 
   TValueDeserializeResult *tvdr = deserialize_to_tva(vec, 1);
   TValueArray *arr = tvdr->array;
-  for (int i = 0; i < arr->vec->len; i++) {
+  for (long long int i = 0; i < arr->vec->len; i++) {
     vec_push(code, arr->vec->data[i]);
   }
   *idx += tvdr->idx - 1;
@@ -89,13 +90,13 @@ void procWith2Arg(Vector *code, Vector *serialized, int type,
   /* first arg */
   /* vec = serialized[idx..$] */
   Vector *vec = new_vec();
-  vec->capacity = serialized->capacity - *idx;
-  vec->len = serialized->len - *idx;
-  vec->data = serialized->data[*idx];
+  for (long long int i = *idx; i < serialized->len; i++) {
+    vec_push(vec, serialized->data[i]);
+  }
 
   TValueDeserializeResult *tvdr = deserialize_to_tva(vec, 1);
   TValueArray *arr = tvdr->array;
-  for (int i = 0; i < arr->vec->len; i++) {
+  for (long long int i = 0; i < arr->vec->len; i++) {
     vec_push(code, arr->vec->data[i]);
   }
   *idx += tvdr->idx - 1;
@@ -103,9 +104,9 @@ void procWith2Arg(Vector *code, Vector *serialized, int type,
   /* second arg */
   /* vec = serialized[idx..$] */
   vec = new_vec();
-  vec->capacity = serialized->capacity - *idx;
-  vec->len = serialized->len - *idx;
-  vec->data = serialized->data[*idx];
+  for (int i = *idx; i < serialized->len; i++) {
+    vec_push(vec, serialized->data[i]);
+  }
 
   tvdr = deserialize_to_tva(vec, 1);
   arr = tvdr->array;
@@ -118,7 +119,7 @@ void procWith2Arg(Vector *code, Vector *serialized, int type,
 Vector *deserialize(Vector *serialized) {
   Vector *code = new_vec();
 
-  for (long long int idx; idx < serialized->len;) {
+  for (long long int idx = 0; idx < serialized->len;) {
     int type = (int)serialized->data[idx++];
     switch (type) {
     case tOpVariableDeclareOnlySymbol:
@@ -190,4 +191,35 @@ Vector *deserialize(Vector *serialized) {
   }
 
   return code;
+}
+
+Vector *readFromFile(char *filename) {
+  FILE *fp;
+
+  fp = fopen(filename, "rb");
+
+  if (fp == NULL) {
+    fprintf(stderr, "Failed to open the file - %s\n", filename);
+    exit(EXIT_FAILURE);
+  }
+
+  Vector *buf = new_vec();
+  long long int v;
+  while (fread(&v, sizeof(long long int), 1, fp)) {
+    vec_push(buf, (void *)v);
+  }
+
+  printf("Loaded byte codes: ");
+  printf("[");
+  for (int i = 0; i < buf->len; i++) {
+    if (i > 0) {
+      printf(", ");
+    }
+    printf("%lld", (long long int)buf->data[i]);
+  }
+  printf("]\n");
+
+  fclose(fp);
+
+  return deserialize(buf);
 }

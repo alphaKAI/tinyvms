@@ -45,6 +45,7 @@ typedef struct {
 } StringBuilder;
 
 StringBuilder *new_sb(void);
+StringBuilder *new_sb_with_char(char *buf);
 void sb_add(StringBuilder *sb, char c);
 void sb_append(StringBuilder *sb, char *s);
 void sb_append_n(StringBuilder *sb, char *s, int len);
@@ -190,5 +191,18 @@ enum {
 };
 
 typedef long long int Opcode;
+
+/////////////// loader ///////////////
+Vector *deserialize(Vector *serialized);
+Vector *readFromFile(char *filename);
+
+///////////////   VM   ///////////////
+typedef struct {
+  Env *env;
+  Vector *stack;
+} VM;
+
+VM *new_VM();
+TValue *vm_execute(VM *vm, Vector *code);
 
 #endif

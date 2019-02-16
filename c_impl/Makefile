@@ -1,5 +1,5 @@
 all:
-	gcc -o tinyvm *.c -g
+	gcc -o tinyvm *.c -g -Wall
 
 clean:
 	rm *.o tinyvm
