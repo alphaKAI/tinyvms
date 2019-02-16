@@ -66,144 +66,128 @@ TValueDeserializeResult *deserialize_to_tva(Vector *serialized,
   return new_TValueDeserializeResult(deserialized, idx);
 }
 
-/*
-Opcode[] deserialize(SerializedType[] serialized) {
-  Opcode[] code;
+void procWith1Arg(Vector *code, Vector *serialized, int type,
+                  long long int *idx) {
+  vec_pushi(code, type);
+  /* vec = serialized[idx..$] */
+  Vector *vec = new_vec();
+  vec->capacity = serialized->capacity - *idx;
+  vec->len = serialized->len - *idx;
+  vec->data = serialized->data[*idx];
 
-  void procWith1Arg(Opcode type, ref long long int idx) {
-    code ~ = type;
-    auto ret = deserialize(serialized[idx..$], 1);
-    Opcode[] operands;
-    foreach (operand; ret[0]) { operands ~ = cast(Opcode) operand; }
-    code ~ = operands;
-    idx += ret[1] - 1;
+  TValueDeserializeResult *tvdr = deserialize_to_tva(vec, 1);
+  TValueArray *arr = tvdr->array;
+  for (int i = 0; i < arr->vec->len; i++) {
+    vec_push(code, arr->vec->data[i]);
   }
+  *idx += tvdr->idx - 1;
+}
 
-  void procWith2Arg(Opcode type, ref long long int idx) {
-    code ~ = type;
+void procWith2Arg(Vector *code, Vector *serialized, int type,
+                  long long int *idx) {
+  vec_pushi(code, type);
+  /* first arg */
+  /* vec = serialized[idx..$] */
+  Vector *vec = new_vec();
+  vec->capacity = serialized->capacity - *idx;
+  vec->len = serialized->len - *idx;
+  vec->data = serialized->data[*idx];
 
-    auto ret = deserialize(serialized[idx..$], 1);
-    Opcode[] operands;
-    foreach (operand; ret[0]) { operands ~ = cast(Opcode) operand; }
-    code ~ = operands;
-    idx += ret[1] - 1;
-
-    ret = deserialize(serialized[idx..$], 1);
-    operands = [];
-    foreach (operand; ret[0]) { operands ~ = cast(Opcode) operand; }
-    code ~ = operands;
-    idx += ret[1] - 1;
+  TValueDeserializeResult *tvdr = deserialize_to_tva(vec, 1);
+  TValueArray *arr = tvdr->array;
+  for (int i = 0; i < arr->vec->len; i++) {
+    vec_push(code, arr->vec->data[i]);
   }
+  *idx += tvdr->idx - 1;
 
-  for (long long int idx; idx < serialized.length;) {
-    OpcodeType type = opnum_to_opcode[serialized[idx++]];
-    final switch (type) with(OpcodeType) {
+  /* second arg */
+  /* vec = serialized[idx..$] */
+  vec = new_vec();
+  vec->capacity = serialized->capacity - *idx;
+  vec->len = serialized->len - *idx;
+  vec->data = serialized->data[*idx];
+
+  tvdr = deserialize_to_tva(vec, 1);
+  arr = tvdr->array;
+  for (int i = 0; i < arr->vec->len; i++) {
+    vec_push(code, arr->vec->data[i]);
+  }
+  *idx += tvdr->idx - 1;
+}
+
+Vector *deserialize(Vector *serialized) {
+  Vector *code = new_vec();
+
+  for (long long int idx; idx < serialized->len;) {
+    int type = (int)serialized->data[idx++];
+    switch (type) {
     case tOpVariableDeclareOnlySymbol:
-      procWith1Arg(opVariableDeclareOnlySymbol, idx);
-      break;
     case tOpVariableDeclareWithAssign:
-      procWith1Arg(opVariableDeclareWithAssign, idx);
+      procWith1Arg(code, serialized, type, &idx);
       break;
     case tOpPop:
-      throw new Error("<Deserialize> Not supported %s".format(type));
+      fprintf(stderr, "<Deserialize> Not supported %d", type);
+      exit(EXIT_FAILURE);
     case tOpPush:
-      procWith1Arg(opPush, idx);
+      procWith1Arg(code, serialized, type, &idx);
       break;
     case tOpAdd:
-      code ~ = opAdd;
-      break;
     case tOpSub:
-      code ~ = opSub;
-      break;
     case tOpMul:
-      code ~ = opMul;
-      break;
     case tOpDiv:
-      code ~ = opMul;
-      break;
     case tOpMod:
-      code ~ = opMul;
-      break;
     case tOpReturn:
-      code ~ = opReturn;
+      vec_pushi(code, type);
       break;
     case tOpGetVariable:
-      procWith1Arg(opGetVariable, idx);
-      break;
     case tOpSetVariablePop:
-      procWith1Arg(opSetVariablePop, idx);
-      break;
     case tOpSetArrayElement:
-      procWith1Arg(opSetArrayElement, idx);
-      break;
     case tOpGetArrayElement:
-      procWith1Arg(opGetArrayElement, idx);
-      break;
     case tOpMakeArray:
-      procWith1Arg(opMakeArray, idx);
-      break;
     case tOpCall:
-      procWith1Arg(opCall, idx);
+      procWith1Arg(code, serialized, type, &idx);
       break;
     case tOpNop:
-      code ~ = opNop;
+      vec_pushi(code, type);
       idx++;
       break;
     case tOpFunctionDeclare:
-      procWith2Arg(opFunctionDeclare, idx);
+      procWith2Arg(code, serialized, type, &idx);
       break;
     case tOpEqualExpression:
-      code ~ = opEqualExpression;
-      break;
     case tOpNotEqualExpression:
-      code ~ = opNotEqualExpression;
-      break;
     case tOpLtExpression:
-      code ~ = opLtExpression;
-      break;
     case tOpLteExpression:
-      code ~ = opLteExpression;
-      break;
     case tOpGtExpression:
-      code ~ = opGtExpression;
-      break;
     case tOpGteExpression:
-      code ~ = opGteExpression;
-      break;
     case tOpAndExpression:
-      code ~ = opAndExpression;
-      break;
     case tOpOrExpression:
-      code ~ = opOrExpression;
-      break;
     case tOpXorExpression:
-      code ~ = opXorExpression;
+      vec_pushi(code, type);
       break;
     case tOpJumpRel:
-      procWith1Arg(opJumpRel, idx);
-      break;
     case tOpJumpAbs:
-      procWith1Arg(opJumpAbs, idx);
+      procWith1Arg(code, serialized, type, &idx);
       break;
     case tOpPrint:
-      code ~ = opPrint;
-      break;
     case tOpPrintln:
-      code ~ = opPrintln;
+      vec_pushi(code, type);
       break;
     case tOpIFStatement:
-      procWith1Arg(opIFStatement, idx);
-      break;
     case tOpAssignExpression:
-      procWith1Arg(opAssignExpression, idx);
+      procWith1Arg(code, serialized, type, &idx);
       break;
     case tOpAssert:
-      code ~ = opAssert;
+      vec_pushi(code, type);
       break;
     case tIValue:
-      throw new Error("<Deserialize> Not supported %s".format(type));
+      fprintf(stderr, "<Deserialize> Not supported %d", type);
+      exit(EXIT_FAILURE);
+    default:
+      fprintf(stderr, "There is no default!\n");
+      exit(EXIT_FAILURE);
     }
   }
 
   return code;
-}*/
+}
