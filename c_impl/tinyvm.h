@@ -1,6 +1,7 @@
 #ifndef __TINY_VM_INCLUDE_GUARD__
 #define __TINY_VM_INCLUDE_GUARD__
 
+#include "sds/sds.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -78,27 +79,27 @@ typedef struct {
 VariableStore *new_vs();
 VariableStore *new_vs_with_super(VariableStore *super);
 HasPtrResult *new_HasPtrResult(TValue *tv, VariableStore *vs);
-HasPtrResult *vs_has_ptr(VariableStore *vs, StringBuilder *key);
-bool vs_has(VariableStore *vs, StringBuilder *key);
-bool vs_superHas(VariableStore *vs, StringBuilder *key);
-HasPtrResult *vs_superHas_ptr(VariableStore *vs, StringBuilder *key);
-TValue *vs_get(VariableStore *vs, StringBuilder *key);
-void vs_def(VariableStore *vs, StringBuilder *key, TValue *value);
-void vs_set(VariableStore *vs, StringBuilder *key, TValue *value);
+HasPtrResult *vs_has_ptr(VariableStore *vs, sds key);
+bool vs_has(VariableStore *vs, sds key);
+bool vs_superHas(VariableStore *vs, sds key);
+HasPtrResult *vs_superHas_ptr(VariableStore *vs, sds key);
+TValue *vs_get(VariableStore *vs, sds key);
+void vs_def(VariableStore *vs, sds key, TValue *value);
+void vs_set(VariableStore *vs, sds key, TValue *value);
 
 Env *new_env();
 Env *new_env_with_vs(VariableStore *vs);
 Env *env_dup(Env *env);
-TValue *env_get(Env *env, StringBuilder *key);
-void env_def(Env *env, StringBuilder *key, TValue *value);
-void env_set(Env *env, StringBuilder *key, TValue *value);
-bool env_has(Env *env, StringBuilder *key);
-HasPtrResult *env_has_ptr(Env *env, StringBuilder *key);
+TValue *env_get(Env *env, sds key);
+void env_def(Env *env, sds key, TValue *value);
+void env_set(Env *env, sds key, TValue *value);
+bool env_has(Env *env, sds key);
+HasPtrResult *env_has_ptr(Env *env, sds key);
 
 //////////////////    value     ////////////////////
 
 typedef struct {
-  StringBuilder *func_name;
+  sds func_name;
   Vector *func_body;
   Env *env;
 } VMFunction;
@@ -108,7 +109,7 @@ struct TValueArray_t {
 };
 
 typedef union {
-  StringBuilder *str;
+  sds str;
   long long int integer;
   bool boolean;
   TValueArray *array;
@@ -123,12 +124,12 @@ struct TValue_t {
 TValue *new_TValue();
 TValue *new_TValue_with_tt(int tt);
 TValue *new_TValue_with_integer(long long int value);
-TValue *new_TValue_with_str(StringBuilder *sb);
+TValue *new_TValue_with_str(sds sb);
 TValue *new_TValue_with_bool(bool value);
 TValue *new_TValue_with_array(TValueArray *array);
 TValue *new_TValue_with_func(VMFunction *func);
 long long int tv_getLong(TValue *tv);
-StringBuilder *tv_getString(TValue *tv);
+sds tv_getString(TValue *tv);
 bool tv_getBool(TValue *tv);
 TValueArray *tv_getArray(TValue *tv);
 VMFunction *tv_getFunction(TValue *tv);
@@ -151,8 +152,7 @@ void tva_set(TValueArray *array, int idx, TValue *elem);
 TValue *tva_get(TValueArray *array, int idx);
 TValueArray *tva_dup(TValueArray *array);
 
-VMFunction *new_VMFunction(StringBuilder *func_name, Vector *func_body,
-                           Env *env);
+VMFunction *new_VMFunction(sds func_name, Vector *func_body, Env *env);
 
 VMFunction *vmf_dup(VMFunction *func);
 

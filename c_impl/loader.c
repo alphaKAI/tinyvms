@@ -1,3 +1,4 @@
+#include "sds/sds.h"
 #include "tinyvm.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,10 +31,15 @@ TValueDeserializeResult *deserialize_to_tva(Vector *serialized,
       break;
     case String: {
       long long int len = (long long int)serialized->data[idx++];
-      StringBuilder *sb = new_sb();
+      char *buf = xmalloc(sizeof(char) * len);
+
       for (int i = 0; i < len; i++) {
-        sb_add(sb, (char)serialized->data[idx++]);
+        buf[i] = (char)serialized->data[idx++];
       }
+
+      sds sb = sdsnewlen(buf, len);
+      free(buf);
+
       tva_push(deserialized, new_TValue_with_str(sb));
       break;
     }

@@ -22,7 +22,7 @@ TValue *new_TValue_with_integer(long long int value) {
   return tv;
 }
 
-TValue *new_TValue_with_str(StringBuilder *sb) {
+TValue *new_TValue_with_str(sds sb) {
   TValue *tv = new_TValue_with_tt(String);
   tv->value.str = sb;
   return tv;
@@ -51,7 +51,7 @@ long long int tv_getLong(TValue *tv) {
   return tv->value.integer;
 }
 
-StringBuilder *tv_getString(TValue *tv) {
+sds tv_getString(TValue *tv) {
   assert(tv->tt == String);
   return tv->value.str;
 }
@@ -81,7 +81,7 @@ bool tv_equals(TValue *this, TValue *that) {
   case Long:
     return this->value.integer == this->value.integer;
   case String:
-    return !strcmp(sb_get(this->value.str), sb_get(that->value.str));
+    return !strcmp(this->value.str, that->value.str);
   case Bool:
     return this->value.boolean == that->value.boolean;
   case Array: {
@@ -131,7 +131,7 @@ int tv_cmp(TValue *this, TValue *that) {
     return 1;
   }
   case String:
-    return strcmp(sb_get(this->value.str), sb_get(that->value.str));
+    return strcmp(this->value.str, that->value.str);
   case Bool:
     fprintf(stderr, "Can't compare with Bool\n");
     exit(EXIT_FAILURE);
@@ -155,7 +155,7 @@ TValue *tv_dup(TValue *tv) {
   case Long:
     return new_TValue_with_integer(tv->value.integer);
   case String:
-    return new_TValue_with_str(sb_dup(tv->value.str));
+    return new_TValue_with_str(sdsdup(tv->value.str));
   case Bool:
     return new_TValue_with_bool(tv->value.boolean);
   case Array:
@@ -192,7 +192,7 @@ void tv_print(TValue *v) {
     printf("%lld", tv_getLong(v));
     break;
   case String:
-    printf("%s", sb_get(tv_getString(v)));
+    printf("%s", tv_getString(v));
     break;
   case Bool:
     printf("%s", tv_getBool(v) ? "true" : "false");
@@ -211,7 +211,7 @@ void tv_print(TValue *v) {
   }
   case Function: {
     VMFunction *vmf = tv_getFunction(v);
-    printf("Function<%s>", sb_get(vmf->func_name));
+    printf("Function<%s>", vmf->func_name);
     break;
   }
   case Null:
@@ -248,8 +248,7 @@ TValueArray *tva_dup(TValueArray *array) {
   return ret;
 }
 
-VMFunction *new_VMFunction(StringBuilder *func_name, Vector *func_body,
-                           Env *env) {
+VMFunction *new_VMFunction(sds func_name, Vector *func_body, Env *env) {
   VMFunction *func = xmalloc(sizeof(VMFunction));
   func->func_name = func_name;
   func->func_body = func_body;

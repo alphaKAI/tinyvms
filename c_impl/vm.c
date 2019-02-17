@@ -1,3 +1,4 @@
+#include "sds/sds.h"
 #include "tinyvm.h"
 #include <assert.h>
 #include <stdio.h>
@@ -17,17 +18,17 @@ VM *new_VM() {
   func_body = new_vec();
   vec_pushi(func_body, tOpPrint);
 
-  func_tv = new_TValue_with_func(
-      new_VMFunction(new_sb_with_char("print"), func_body, vm->env));
-  env_def(vm->env, new_sb_with_char("print"), func_tv);
+  func_tv =
+      new_TValue_with_func(new_VMFunction(sdsnew("print"), func_body, vm->env));
+  env_def(vm->env, sdsnew("print"), func_tv);
 
   /* println */
   func_body = new_vec();
   vec_pushi(func_body, tOpPrintln);
 
   func_tv = new_TValue_with_func(
-      new_VMFunction(new_sb_with_char("println"), func_body, vm->env));
-  env_def(vm->env, new_sb_with_char("println"), func_tv);
+      new_VMFunction(sdsnew("println"), func_body, vm->env));
+  env_def(vm->env, sdsnew("println"), func_tv);
 
   return vm;
 }
@@ -167,7 +168,7 @@ TValue *vm_execute(VM *vm, Vector *code) {
       if (ptr->tv != NULL) {
         vec_push(vm->stack, ptr->tv);
       } else {
-        fprintf(stderr, "No such a variable %s", sb_get((tv_getString(v))));
+        fprintf(stderr, "No such a variable %s", tv_getString(v));
         exit(EXIT_FAILURE);
       }
       break;
@@ -180,7 +181,7 @@ TValue *vm_execute(VM *vm, Vector *code) {
     }
     case tOpCall: {
       TValue *func = (TValue *)code->data[pc++ + 1];
-      StringBuilder *fname = tv_getString(func);
+      sds fname = tv_getString(func);
       Env *cpyEnv = vm->env;
       vm->env = env_dup(tv_getFunction(env_get(vm->env, fname))->env);
       vm_execute(vm, tv_getFunction(env_get(cpyEnv, fname))->func_body);
@@ -192,7 +193,7 @@ TValue *vm_execute(VM *vm, Vector *code) {
     }
     case tOpFunctionDeclare: {
       TValue *symbol = (TValue *)code->data[pc++ + 1];
-      StringBuilder *func_name = tv_getString(symbol);
+      sds func_name = tv_getString(symbol);
       TValue *op_blocks_length = (TValue *)code->data[pc++ + 1];
       Vector *func_body = new_vec();
       for (int i = 0; i < tv_getLong(op_blocks_length); i++) {
@@ -307,7 +308,7 @@ TValue *vm_execute(VM *vm, Vector *code) {
       break;
     }
     case tOpSetArrayElement: {
-      StringBuilder *variable = tv_getString((TValue *)code->data[pc++ + 1]);
+      sds variable = tv_getString((TValue *)code->data[pc++ + 1]);
       long long int idx = tv_getBool((TValue *)vec_pop(vm->stack));
       TValue *val = (TValue *)vec_pop(vm->stack);
       TValueArray *array = tv_getArray(env_get(vm->env, variable));
@@ -315,7 +316,7 @@ TValue *vm_execute(VM *vm, Vector *code) {
       break;
     }
     case tOpGetArrayElement: {
-      StringBuilder *variable = tv_getString((TValue *)code->data[pc++ + 1]);
+      sds variable = tv_getString((TValue *)code->data[pc++ + 1]);
       long long int idx = tv_getLong((TValue *)vec_pop(vm->stack));
       vec_push(vm->stack,
                tva_get(tv_getArray(env_get(vm->env, variable)), idx));
@@ -334,10 +335,10 @@ TValue *vm_execute(VM *vm, Vector *code) {
     case tIValue:
       VM_ERROR("TValue* should not peek directly");
     case tOpAssert: {
-      StringBuilder *msg = tv_getString((TValue *)vec_pop(vm->stack));
+      sds msg = tv_getString((TValue *)vec_pop(vm->stack));
       bool result = tv_getBool((TValue *)vec_pop(vm->stack));
       if (!result) {
-        VM_ERROR(sb_get(msg));
+        VM_ERROR(msg);
       }
       break;
     }

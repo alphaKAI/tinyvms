@@ -3,8 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void finalize(StringBuilder *sb) { sb_get(sb); }
-
 int main(int argc, char *argv[]) {
   if (argc < 2) {
     fprintf(stderr, "too few arguments\n");
