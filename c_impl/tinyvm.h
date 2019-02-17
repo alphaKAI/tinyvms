@@ -8,11 +8,13 @@
 
 typedef struct {
   void **data;
-  int capacity;
-  int len;
+  long long int capacity;
+  long long int len;
 } Vector;
 
 Vector *new_vec(void);
+void vec_free(Vector **v_ptr);
+void vec_expand(Vector *v, long long int size);
 void vec_push(Vector *v, void *elem);
 void vec_pushi(Vector *v, int val);
 void *vec_pop(Vector *v);
@@ -69,13 +71,13 @@ typedef struct {
 } Env;
 
 typedef struct {
-  TValue **tv;
+  TValue *tv;
   VariableStore *vs;
 } HasPtrResult;
 
 VariableStore *new_vs();
-VariableStore *new_vs_with_super(VariableStore **super);
-HasPtrResult *new_HasPtrResult(TValue **tv, VariableStore *vs);
+VariableStore *new_vs_with_super(VariableStore *super);
+HasPtrResult *new_HasPtrResult(TValue *tv, VariableStore *vs);
 HasPtrResult *vs_has_ptr(VariableStore *vs, StringBuilder *key);
 bool vs_has(VariableStore *vs, StringBuilder *key);
 bool vs_superHas(VariableStore *vs, StringBuilder *key);
@@ -128,14 +130,24 @@ TValue *new_TValue_with_func(VMFunction *func);
 long long int tv_getLong(TValue *tv);
 StringBuilder *tv_getString(TValue *tv);
 bool tv_getBool(TValue *tv);
-TValueArray *getArray(TValue *tv);
+TValueArray *tv_getArray(TValue *tv);
 VMFunction *tv_getFunction(TValue *tv);
 bool tv_equals(TValue *this, TValue *that);
-int vs_cmp(TValue *this, TValue *that);
+int tv_cmp(TValue *this, TValue *that);
 TValue *tv_dup(TValue *tv);
+
+bool tv_lt(TValue *a, TValue *b);
+bool tv_lte(TValue *a, TValue *b);
+bool tv_gt(TValue *a, TValue *b);
+bool tv_gte(TValue *a, TValue *b);
+bool tv_and(TValue *a, TValue *b);
+bool tv_or(TValue *a, TValue *b);
+
+void tv_print(TValue *v);
 
 TValueArray *new_TValueArray();
 void tva_push(TValueArray *array, TValue *elem);
+void tva_set(TValueArray *array, int idx, TValue *elem);
 TValue *tva_get(TValueArray *array, int idx);
 TValueArray *tva_dup(TValueArray *array);
 
@@ -205,4 +217,6 @@ typedef struct {
 VM *new_VM();
 TValue *vm_execute(VM *vm, Vector *code);
 
+void type_print(int type);
+void code_printer(Vector *code);
 #endif

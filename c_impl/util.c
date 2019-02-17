@@ -19,6 +19,13 @@ void vec_free(Vector **v_ptr) {
   *v_ptr = NULL;
 }
 
+void vec_expand(Vector *v, long long int size) {
+  if (v->len < size) {
+    v->capacity = size;
+    v->data = realloc(v->data, sizeof(void *) * v->capacity);
+  }
+}
+
 void vec_push(Vector *v, void *elem) {
   if (v->len == v->capacity) {
     v->capacity *= 2;
@@ -158,4 +165,49 @@ void *xmalloc(size_t size) {
   }
 
   return ptr;
+}
+
+#define case_printer(case_name)                                                \
+  case case_name:                                                              \
+    printf(#case_name);                                                        \
+    break
+
+void type_print(int type) {
+  switch (type) {
+    case_printer(tOpVariableDeclareOnlySymbol);
+    case_printer(tOpVariableDeclareWithAssign);
+    case_printer(tOpPop);
+    case_printer(tOpPush);
+    case_printer(tOpAdd);
+    case_printer(tOpSub);
+    case_printer(tOpMul);
+    case_printer(tOpDiv);
+    case_printer(tOpMod);
+    case_printer(tOpReturn);
+    case_printer(tOpGetVariable);
+    case_printer(tOpSetVariablePop);
+    case_printer(tOpSetArrayElement);
+    case_printer(tOpGetArrayElement);
+    case_printer(tOpMakeArray);
+    case_printer(tOpCall);
+    case_printer(tOpNop);
+    case_printer(tOpFunctionDeclare);
+    case_printer(tOpEqualExpression);
+    case_printer(tOpNotEqualExpression);
+    case_printer(tOpLtExpression);
+    case_printer(tOpLteExpression);
+    case_printer(tOpGtExpression);
+    case_printer(tOpGteExpression);
+    case_printer(tOpAndExpression);
+    case_printer(tOpOrExpression);
+    case_printer(tOpXorExpression);
+    case_printer(tOpJumpRel);
+    case_printer(tOpJumpAbs);
+    case_printer(tOpPrint);
+    case_printer(tOpPrintln);
+    case_printer(tOpIFStatement);
+    case_printer(tOpAssignExpression);
+    case_printer(tOpAssert);
+    case_printer(tIValue);
+  }
 }

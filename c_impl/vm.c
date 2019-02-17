@@ -60,10 +60,35 @@ TValue *vm_stackPeekTop(VM *vm) {
     }                                                                          \
   }
 
+//#define __TINYVM_DEBUG__
+
 TValue *vm_execute(VM *vm, Vector *code) {
-  for (size_t pc = 0; pc < code->len; pc++) {
+  for (long long int pc = 0; pc < code->len; pc++) {
     int op = (int)code->data[pc];
-    // printf("op : %d\n", op);
+
+#ifdef __TINYVM_DEBUG__
+    printf("[DEBUG]-----------------------------------------------\n");
+    printf("op: ");
+    type_print(op);
+    printf("\n");
+    Vector *keys = vm->env->vs->store->keys;
+    printf("keys->len : %lld\n", keys->len);
+    for (int i = 0; i < keys->len; i++) {
+      printf("key : %s, ", keys->data[i]);
+      printf("val : ");
+      tv_print(env_get(vm->env, new_sb_with_char(keys->data[i])));
+      printf("\n");
+    }
+    printf("vm->stack->data : %p\n", vm->stack->data);
+    printf("stack : [");
+    for (int i = 0; i < vm->stack->len; i++) {
+      if (i > 0) {
+        printf(", ");
+      }
+      tv_print(vm->stack->data[i]);
+    }
+    printf("]\n");
+#endif
     switch (op) {
     case tOpVariableDeclareOnlySymbol: {
       TValue *symbol = (TValue *)code->data[pc++ + 1];
@@ -88,65 +113,71 @@ TValue *vm_execute(VM *vm, Vector *code) {
       vec_push(vm->stack, v);
       break;
     }
-    case tOpPop:
+    case tOpPop: {
       vec_pop(vm->stack);
       break;
+    }
     case tOpAdd: {
       TValue *a = (TValue *)vec_pop(vm->stack),
              *b = (TValue *)vec_pop(vm->stack);
       VM_ASSERT0(a->tt == b->tt && a->tt == Long);
-      vec_push(vm->stack, (void *)(a->value.integer + b->value.integer));
+      vec_push(vm->stack,
+               new_TValue_with_integer(a->value.integer + b->value.integer));
       break;
     }
     case tOpSub: {
       TValue *a = (TValue *)vec_pop(vm->stack),
              *b = (TValue *)vec_pop(vm->stack);
       assert(a->tt == b->tt && a->tt == Long);
-      vec_push(vm->stack, (void *)(a->value.integer - b->value.integer));
+      vec_push(vm->stack,
+               new_TValue_with_integer(a->value.integer - b->value.integer));
       break;
     }
     case tOpMul: {
       TValue *a = (TValue *)vec_pop(vm->stack),
              *b = (TValue *)vec_pop(vm->stack);
       assert(a->tt == b->tt && a->tt == Long);
-      vec_push(vm->stack, (void *)(a->value.integer * b->value.integer));
+      vec_push(vm->stack,
+               new_TValue_with_integer(a->value.integer * b->value.integer));
       break;
     }
     case tOpDiv: {
       TValue *a = (TValue *)vec_pop(vm->stack),
              *b = (TValue *)vec_pop(vm->stack);
       assert(a->tt == b->tt && a->tt == Long);
-      vec_push(vm->stack, (void *)(a->value.integer / b->value.integer));
+      vec_push(vm->stack,
+               new_TValue_with_integer(a->value.integer / b->value.integer));
       break;
     }
     case tOpMod: {
       TValue *a = (TValue *)vec_pop(vm->stack),
              *b = (TValue *)vec_pop(vm->stack);
       assert(a->tt == b->tt && a->tt == Long);
-      vec_push(vm->stack, (void *)(a->value.integer % b->value.integer));
+      vec_push(vm->stack,
+               new_TValue_with_integer(a->value.integer % b->value.integer));
       break;
     }
-    case tOpReturn:
+    case tOpReturn: {
       return vm_stackPeekTop(vm);
+    }
     case tOpGetVariable: {
       TValue *v = (TValue *)code->data[pc++ + 1];
       VM_ASSERT(v != NULL, "Execute Error on tOpGetVariable");
       HasPtrResult *ptr = env_has_ptr(vm->env, tv_getString(v));
       if (ptr->tv != NULL) {
-        vec_push(vm->stack, *ptr->tv);
+        vec_push(vm->stack, ptr->tv);
       } else {
         fprintf(stderr, "No such a variable %s", sb_get((tv_getString(v))));
         exit(EXIT_FAILURE);
       }
       break;
     }
-    /*
-    case tOpSetVariablePop:
-      auto dst = (TValue *)code->data[pc++ + 1];
-      auto v = (TValue *)vec_pop(vm->stack);
-      this.env.set(dst.getString, v);
+    case tOpSetVariablePop: {
+      TValue *dst = (TValue *)code->data[pc++ + 1];
+      TValue *v = (TValue *)vec_pop(vm->stack);
+      env_set(vm->env, tv_getString(dst), v);
       break;
-      */
+    }
     case tOpCall: {
       TValue *func = (TValue *)code->data[pc++ + 1];
       StringBuilder *fname = tv_getString(func);
@@ -156,113 +187,117 @@ TValue *vm_execute(VM *vm, Vector *code) {
       vm->env = cpyEnv;
       break;
     }
-      /*
-    case tOpNop:
+    case tOpNop: {
       break;
-    case tOpFunctionDeclare:
-      auto symbol = (TValue *)code->data[pc++ + 1];
-      string func_name = symbol.getString;
-      auto op_blocks_length = (TValue *)code->data[pc++ + 1];
-      Opcode[] func_body;
-      foreach (_; 0..op_blocks_length.getLong) { func_body ~ = code[pc++ + 1]; }
-      this.env.def(func_name,
-                   new TValue *(new VMFunction(func_name, func_body, env.dup)));
+    }
+    case tOpFunctionDeclare: {
+      TValue *symbol = (TValue *)code->data[pc++ + 1];
+      StringBuilder *func_name = tv_getString(symbol);
+      TValue *op_blocks_length = (TValue *)code->data[pc++ + 1];
+      Vector *func_body = new_vec();
+      for (int i = 0; i < tv_getLong(op_blocks_length); i++) {
+        vec_push(func_body, code->data[pc++ + 1]);
+      }
+      env_def(vm->env, func_name,
+              new_TValue_with_func(
+                  new_VMFunction(func_name, func_body, env_dup(vm->env))));
       break;
-    case tOpEqualExpression:
+    }
+    case tOpEqualExpression: {
       TValue *a = (TValue *)vec_pop(vm->stack),
-             b = (TValue *)vec_pop(vm->stack);
-      vec_push(vm->stack, new TValue *(a == b));
+             *b = (TValue *)vec_pop(vm->stack);
+      vec_push(vm->stack, new_TValue_with_bool(tv_equals(a, b)));
       break;
-    case tOpNotEqualExpression:
+    }
+    case tOpNotEqualExpression: {
       TValue *a = (TValue *)vec_pop(vm->stack),
-             b = (TValue *)vec_pop(vm->stack);
-      vec_push(vm->stack, new TValue *(a != b));
+             *b = (TValue *)vec_pop(vm->stack);
+      vec_push(vm->stack, new_TValue_with_bool(!tv_equals(a, b)));
       break;
-    case tOpLtExpression:
+    }
+    case tOpLtExpression: {
       TValue *a = (TValue *)vec_pop(vm->stack),
-             b = (TValue *)vec_pop(vm->stack);
-      vec_push(vm->stack, new TValue *(a < b));
+             *b = (TValue *)vec_pop(vm->stack);
+      vec_push(vm->stack, new_TValue_with_bool(tv_lt(a, b)));
       break;
-    case tOpLteExpression:
+    }
+    case tOpLteExpression: {
       TValue *a = (TValue *)vec_pop(vm->stack),
-             b = (TValue *)vec_pop(vm->stack);
-      vec_push(vm->stack, new TValue *(a <= b));
+             *b = (TValue *)vec_pop(vm->stack);
+      vec_push(vm->stack, new_TValue_with_bool(tv_lte(a, b)));
       break;
-    case tOpGtExpression:
+    }
+    case tOpGtExpression: {
       TValue *a = (TValue *)vec_pop(vm->stack),
-             b = (TValue *)vec_pop(vm->stack);
-      vec_push(vm->stack, new TValue *(a > b));
+             *b = (TValue *)vec_pop(vm->stack);
+      vec_push(vm->stack, new_TValue_with_bool(tv_gt(a, b)));
       break;
-    case tOpGteExpression:
+    }
+    case tOpGteExpression: {
       TValue *a = (TValue *)vec_pop(vm->stack),
-             b = (TValue *)vec_pop(vm->stack);
-      vec_push(vm->stack, new TValue *(a >= b));
+             *b = (TValue *)vec_pop(vm->stack);
+      vec_push(vm->stack, new_TValue_with_bool(tv_gte(a, b)));
       break;
-    case tOpAndExpression:
-      bool a = (TValue *)vec_pop(vm->stack).getBool,
-           b = (TValue *)vec_pop(vm->stack).getBool;
-      vec_push(vm->stack, new TValue *(a && b));
+    }
+    case tOpAndExpression: {
+      TValue *a = (TValue *)vec_pop(vm->stack),
+             *b = (TValue *)vec_pop(vm->stack);
+      vec_push(vm->stack, new_TValue_with_bool(tv_and(a, b)));
       break;
-    case tOpOrExpression:
-      bool a = (TValue *)vec_pop(vm->stack).getBool,
-           b = (TValue *)vec_pop(vm->stack).getBool;
-      vec_push(vm->stack, new TValue *(a || b));
+    }
+    case tOpOrExpression: {
+      TValue *a = (TValue *)vec_pop(vm->stack),
+             *b = (TValue *)vec_pop(vm->stack);
+      vec_push(vm->stack, new_TValue_with_bool(tv_or(a, b)));
       break;
-    case tOpXorExpression:
-      throw new Error("Not implemented <%s>".format(op.type));
-      */
+    }
+    case tOpXorExpression: {
+      VM_ERROR("Not implemented <XOR>");
+    }
     case tOpPrint: {
       TValue *v = (TValue *)vec_pop(vm->stack);
-      if (v->tt == String) {
-        printf("%s", sb_get(tv_getString(v)));
-      } else {
-        fprintf(stderr, "ADD OTHER FORMATS <OpPrint>\n");
-        exit(EXIT_FAILURE);
-      }
+      tv_print(v);
       break;
     }
     case tOpPrintln: {
       TValue *v = (TValue *)vec_pop(vm->stack);
-      if (v->tt == String) {
-        printf("%s\n", sb_get(tv_getString(v)));
-      } else {
-        fprintf(stderr, "ADD OTHER FORMATS <OpPrint>\n");
-        exit(EXIT_FAILURE);
-      }
+      tv_print(v);
+      printf("\n");
       break;
     }
-      /*
-    case tOpJumpRel:
-      auto v = (TValue *)code->data[pc++ + 1];
-      pc += v.getLong;
+    case tOpJumpRel: {
+      TValue *v = (TValue *)code->data[pc++ + 1];
+      pc += tv_getLong(v);
       break;
-    case tOpJumpAbs:
-      auto v = (TValue *)code->data[pc++ + 1];
-      pc = v.getLong;
+    }
+    case tOpJumpAbs: {
+      TValue *v = (TValue *)code->data[pc++ + 1];
+      pc = tv_getLong(v);
       break;
-    case tOpIFStatement:
+    }
+    case tOpIFStatement: {
       TValue *cond = (TValue *)vec_pop(vm->stack);
       bool condResult;
-      switch (cond.vtype)
-        with(ValueType) {
-        case Long:
-          condResult = cond.getLong != 0;
-          break;
-        case Bool:
-          condResult = cond.getBool;
-          break;
-        case String:
-          throw new Exception("Execute Error Invalid Condition <string>");
-        case Array:
-          throw new Exception("Execute Error Invalid Condition <array>");
-        case Function:
-          throw new Exception("Execute Error Invalid Condition <function>");
-        case Null:
-          condResult = false;
-          break;
-        }
+      switch (cond->tt) {
+      case Long:
+        condResult = tv_getLong(cond) != 0;
+        break;
+      case Bool:
+        condResult = tv_getBool(cond);
+        break;
+      case String:
+        VM_ERROR("Execute Error Invalid Condition <string>");
+      case Array:
+        VM_ERROR("Execute Error Invalid Condition <array>");
+      case Function:
+        VM_ERROR("Execute Error Invalid Condition <function>");
+      case Null:
+        condResult = false;
+        break;
+      }
 
-      auto trueBlockLength = ((TValue *)code->data[pc++ + 1]).getLong;
+      long long int trueBlockLength =
+          tv_getLong((TValue *)code->data[pc++ + 1]);
 
       if (condResult) {
         break;
@@ -270,38 +305,143 @@ TValue *vm_execute(VM *vm, Vector *code) {
         pc += trueBlockLength;
       }
       break;
-    case tOpSetArrayElement:
-      auto variable = ((TValue *)code->data[pc++ + 1]).getString;
-      auto idx = (TValue *)vec_pop(vm->stack)().getLong;
-      auto val = (TValue *)vec_pop(vm->stack);
-      env.get(variable).setArrayElement(idx, val);
+    }
+    case tOpSetArrayElement: {
+      StringBuilder *variable = tv_getString((TValue *)code->data[pc++ + 1]);
+      long long int idx = tv_getBool((TValue *)vec_pop(vm->stack));
+      TValue *val = (TValue *)vec_pop(vm->stack);
+      TValueArray *array = tv_getArray(env_get(vm->env, variable));
+      tva_set(array, idx, val);
       break;
-    case tOpGetArrayElement:
-      auto variable = ((TValue *)code->data[pc++ + 1]).getString;
-      auto idx = (TValue *)vec_pop(vm->stack)().getLong;
-      vec_push(vm->stack, env.get(variable)[idx]);
+    }
+    case tOpGetArrayElement: {
+      StringBuilder *variable = tv_getString((TValue *)code->data[pc++ + 1]);
+      long long int idx = tv_getLong((TValue *)vec_pop(vm->stack));
+      vec_push(vm->stack,
+               tva_get(tv_getArray(env_get(vm->env, variable)), idx));
       break;
-    case tOpMakeArray:
-      long array_size = ((TValue *)code->data[pc++ + 1]).getLong;
-      TValue *[] array;
-      array.length = array_size;
-      foreach_reverse(i; 0..array_size) {
-        array[i] = (TValue *)vec_pop(vm->stack)();
+    }
+    case tOpMakeArray: {
+      long long int array_size = tv_getLong((TValue *)code->data[pc++ + 1]);
+      TValueArray *array = new_TValueArray();
+      vec_expand(array->vec, array_size);
+      for (int i = array_size - 1; i >= 0; i--) {
+        array->vec->data[i] = (TValue *)vec_pop(vm->stack);
       }
-      vec_push(vm->stack, new TValue *(array));
+      vec_push(vm->stack, new_TValue_with_array(array));
       break;
-    case tTValue *:
-      throw new Error("TValue* should not peek directly");
-    case tOpAssert:
-      auto msg = (TValue *)vec_pop(vm->stack)().getString;
-      auto result = (TValue *)vec_pop(vm->stack)().getBool;
+    }
+    case tIValue:
+      VM_ERROR("TValue* should not peek directly");
+    case tOpAssert: {
+      StringBuilder *msg = tv_getString((TValue *)vec_pop(vm->stack));
+      bool result = tv_getBool((TValue *)vec_pop(vm->stack));
       if (!result) {
-        throw new VMException(msg);
+        VM_ERROR(sb_get(msg));
       }
-      */
+      break;
+    }
     default:
       fprintf(stderr, "<VM error> Invalid op\n");
     }
   }
   return vm_stackPeekTop(vm);
+}
+
+void code_printer(Vector *code) {
+  printf("=====================================================\n");
+  for (int idx = 0; idx < code->len;) {
+    int type = (int)code->data[idx++];
+    switch (type) {
+    case tOpVariableDeclareOnlySymbol:
+    case tOpVariableDeclareWithAssign:
+      type_print(type);
+      printf(", ");
+      tv_print(code->data[idx++]);
+      printf("\n");
+      break;
+    case tOpPop:
+      type_print(type);
+      printf("\n");
+      break;
+    case tOpPush:
+      type_print(type);
+      printf(", ");
+      tv_print(code->data[idx++]);
+      printf("\n");
+      break;
+    case tOpAdd:
+    case tOpSub:
+    case tOpMul:
+    case tOpDiv:
+    case tOpMod:
+    case tOpReturn:
+      type_print(type);
+      printf("\n");
+      break;
+    case tOpGetVariable:
+    case tOpSetVariablePop:
+    case tOpSetArrayElement:
+    case tOpGetArrayElement:
+    case tOpMakeArray:
+    case tOpCall:
+      type_print(type);
+      printf(", ");
+      tv_print(code->data[idx++]);
+      printf("\n");
+      break;
+    case tOpNop:
+      type_print(type);
+      printf("\n");
+      break;
+    case tOpFunctionDeclare:
+      type_print(type);
+      printf(", ");
+      tv_print(code->data[idx++]);
+      printf(", ");
+      tv_print(code->data[idx++]);
+      printf("\n");
+      break;
+    case tOpEqualExpression:
+    case tOpNotEqualExpression:
+    case tOpLtExpression:
+    case tOpLteExpression:
+    case tOpGtExpression:
+    case tOpGteExpression:
+    case tOpAndExpression:
+    case tOpOrExpression:
+    case tOpXorExpression:
+      type_print(type);
+      printf("\n");
+      break;
+    case tOpJumpRel:
+    case tOpJumpAbs:
+      type_print(type);
+      printf(", ");
+      tv_print(code->data[idx++]);
+      printf("\n");
+      break;
+    case tOpPrint:
+    case tOpPrintln:
+      type_print(type);
+      printf("\n");
+      break;
+    case tOpIFStatement:
+    case tOpAssignExpression:
+      type_print(type);
+      printf(", ");
+      tv_print(code->data[idx++]);
+      printf("\n");
+      break;
+    case tOpAssert:
+      type_print(type);
+      printf("\n");
+      break;
+    case tIValue:
+      tv_print(code->data[idx++]);
+      printf("\n");
+      break;
+    }
+  }
+  printf("=====================================================\n");
 }

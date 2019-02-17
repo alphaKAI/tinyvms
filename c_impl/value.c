@@ -61,7 +61,7 @@ bool tv_getBool(TValue *tv) {
   return tv->value.boolean;
 }
 
-TValueArray *getArray(TValue *tv) {
+TValueArray *tv_getArray(TValue *tv) {
   assert(tv->tt == Array);
   return tv->value.array;
 }
@@ -112,7 +112,7 @@ bool tv_equals(TValue *this, TValue *that) {
   exit(EXIT_FAILURE);
 }
 
-int vs_cmp(TValue *this, TValue *that) {
+int tv_cmp(TValue *this, TValue *that) {
   if (this->tt != that->tt) {
     fprintf(stderr, "Can not compare between incompatibility vtype \n");
     exit(EXIT_FAILURE);
@@ -167,6 +167,59 @@ TValue *tv_dup(TValue *tv) {
   }
 }
 
+bool tv_lt(TValue *a, TValue *b) { return tv_cmp(a, b) == -1; }
+bool tv_lte(TValue *a, TValue *b) {
+  int v = tv_cmp(a, b);
+  return v == -1 || v == 0;
+}
+bool tv_gt(TValue *a, TValue *b) { return tv_cmp(a, b) == 1; }
+bool tv_gte(TValue *a, TValue *b) {
+  int v = tv_cmp(a, b);
+  return v == 1 || v == 0;
+}
+bool tv_and(TValue *a, TValue *b) {
+  assert(a->tt == b->tt && a->tt == Bool);
+  return tv_getBool(a) && tv_getBool(b);
+}
+bool tv_or(TValue *a, TValue *b) {
+  assert(a->tt == b->tt && a->tt == Bool);
+  return tv_getBool(a) || tv_getBool(b);
+}
+
+void tv_print(TValue *v) {
+  switch (v->tt) {
+  case Long:
+    printf("%lld", tv_getLong(v));
+    break;
+  case String:
+    printf("%s", sb_get(tv_getString(v)));
+    break;
+  case Bool:
+    printf("%s", tv_getBool(v) ? "true" : "false");
+    break;
+  case Array: {
+    TValueArray *array = tv_getArray(v);
+    printf("[");
+    for (int i = 0; i < array->vec->len; i++) {
+      if (i > 0) {
+        printf(", ");
+      }
+      tv_print(array->vec->data[i]);
+    }
+    printf("]");
+    break;
+  }
+  case Function: {
+    VMFunction *vmf = tv_getFunction(v);
+    printf("Function<%s>", sb_get(vmf->func_name));
+    break;
+  }
+  case Null:
+    printf("null");
+    break;
+  }
+}
+
 TValueArray *new_TValueArray() {
   TValueArray *array = xmalloc(sizeof(TValueArray));
   array->vec = new_vec();
@@ -174,6 +227,11 @@ TValueArray *new_TValueArray() {
 }
 
 void tva_push(TValueArray *array, TValue *elem) { vec_push(array->vec, elem); }
+
+void tva_set(TValueArray *array, int idx, TValue *elem) {
+  assert(idx < array->vec->len);
+  array->vec->data[idx] = elem;
+}
 
 TValue *tva_get(TValueArray *array, int idx) {
   assert(idx < array->vec->len);

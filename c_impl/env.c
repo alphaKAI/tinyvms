@@ -11,14 +11,14 @@ VariableStore *new_vs() {
   return vs;
 }
 
-VariableStore *new_vs_with_super(VariableStore **super) {
+VariableStore *new_vs_with_super(VariableStore *super) {
   VariableStore *vs = new_vs();
-  vs->super = *super;
+  vs->super = super;
   vs->has_super = true;
   return vs;
 }
 
-HasPtrResult *new_HasPtrResult(TValue **tv, VariableStore *vs) {
+HasPtrResult *new_HasPtrResult(TValue *tv, VariableStore *vs) {
   HasPtrResult *hpr = xmalloc(sizeof(HasPtrResult));
   hpr->tv = tv;
   hpr->vs = vs;
@@ -78,7 +78,7 @@ TValue *vs_get(VariableStore *vs, StringBuilder *key) {
       HasPtrResult *ptr = vs_superHas_ptr(vs, key);
       if (ptr->tv != NULL) {
         // 持っている場合，親から参照する
-        return *ptr->tv;
+        return ptr->tv;
       } else {
         // 持っていない場合，現在のインスタンスから参照する．
         return map_get(vs->store, sb_get(key));
