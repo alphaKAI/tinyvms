@@ -91,7 +91,6 @@ void map_put(Map *map, sds key, void *val) {
 
   for (; idx < map->keys->len; idx++) {
     if (!strcmp(map->keys->data[idx], key)) {
-      printf("found the key - %s\n", key);
       map->vals->data[idx] = val;
       return;
     }
