@@ -21,7 +21,7 @@ void vec_pushi(Vector *v, int val);
 void *vec_pop(Vector *v);
 void *vec_last(Vector *v);
 bool vec_contains(Vector *v, void *elem);
-bool vec_containss(Vector *v, char *key);
+bool vec_containss(Vector *v, sds key);
 bool vec_union1(Vector *v, void *elem);
 void *vec_get(Vector *v, int idx);
 
@@ -33,27 +33,11 @@ typedef struct {
 } Map;
 
 Map *new_map(void);
-void map_put(Map *map, char *key, void *val);
-void map_puti(Map *map, char *key, int val);
-void *map_get(Map *map, char *key);
-int map_geti(Map *map, char *key, int default_);
-bool map_exists(Map *map, char *key);
-
-////////////////// StringBuilder //////////////////
-
-typedef struct {
-  char *data;
-  int capacity;
-  int len;
-} StringBuilder;
-
-StringBuilder *new_sb(void);
-StringBuilder *new_sb_with_char(char *buf);
-void sb_add(StringBuilder *sb, char c);
-void sb_append(StringBuilder *sb, char *s);
-void sb_append_n(StringBuilder *sb, char *s, int len);
-char *sb_get(StringBuilder *sb);
-StringBuilder *sb_dup(StringBuilder *sb);
+void map_put(Map *map, sds key, void *val);
+void map_puti(Map *map, sds key, int val);
+void *map_get(Map *map, sds key);
+int map_geti(Map *map, sds key, int default_);
+bool map_exists(Map *map, sds key);
 
 //////////////////    env    //////////////////
 
@@ -206,7 +190,7 @@ typedef long long int Opcode;
 
 /////////////// loader ///////////////
 Vector *deserialize(Vector *serialized);
-Vector *readFromFile(char *filename);
+Vector *readFromFile(sds filename);
 
 ///////////////   VM   ///////////////
 typedef struct {

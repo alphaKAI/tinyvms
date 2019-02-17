@@ -53,7 +53,7 @@ bool vec_contains(Vector *v, void *elem) {
   return false;
 }
 
-bool vec_containss(Vector *v, char *key) {
+bool vec_containss(Vector *v, sds key) {
   for (int i = 0; i < v->len; i++)
     if (!strcmp(v->data[i], key))
       return true;
@@ -86,74 +86,37 @@ void map_free(Map **map_ptr) {
   *map_ptr = NULL;
 }
 
-void map_put(Map *map, char *key, void *val) {
+void map_put(Map *map, sds key, void *val) {
+  long long idx = 0;
+
+  for (; idx < map->keys->len; idx++) {
+    if (!strcmp(map->keys->data[idx], key)) {
+      printf("found the key - %s\n", key);
+      map->vals->data[idx] = val;
+      return;
+    }
+  }
+
   vec_push(map->keys, key);
   vec_push(map->vals, val);
 }
 
-void map_puti(Map *map, char *key, int val) {
+void map_puti(Map *map, sds key, int val) {
   map_put(map, key, (void *)(intptr_t)val);
 }
 
-void *map_get(Map *map, char *key) {
+void *map_get(Map *map, sds key) {
   for (int i = map->keys->len - 1; i >= 0; i--)
     if (!strcmp(map->keys->data[i], key))
       return map->vals->data[i];
   return NULL;
 }
 
-int map_geti(Map *map, char *key, int default_) {
+int map_geti(Map *map, sds key, int default_) {
   for (int i = map->keys->len - 1; i >= 0; i--)
     if (!strcmp(map->keys->data[i], key))
       return (intptr_t)map->vals->data[i];
   return default_;
-}
-
-StringBuilder *new_sb(void) {
-  StringBuilder *sb = malloc(sizeof(StringBuilder));
-  sb->data = malloc(8);
-  sb->capacity = 8;
-  sb->len = 0;
-  return sb;
-}
-
-StringBuilder *new_sb_with_char(char *buf) {
-  StringBuilder *sb = new_sb();
-  sb_append(sb, buf);
-  return sb;
-}
-
-static void sb_grow(StringBuilder *sb, int len) {
-  if (sb->len + len <= sb->capacity)
-    return;
-
-  while (sb->len + len > sb->capacity)
-    sb->capacity *= 2;
-  sb->data = realloc(sb->data, sb->capacity);
-}
-
-void sb_add(StringBuilder *sb, char c) {
-  sb_grow(sb, 1);
-  sb->data[sb->len++] = c;
-}
-
-void sb_append(StringBuilder *sb, char *s) { sb_append_n(sb, s, strlen(s)); }
-
-void sb_append_n(StringBuilder *sb, char *s, int len) {
-  sb_grow(sb, len);
-  memcpy(sb->data + sb->len, s, len);
-  sb->len += len;
-}
-
-char *sb_get(StringBuilder *sb) {
-  sb_add(sb, '\0');
-  return sb->data;
-}
-
-StringBuilder *sb_dup(StringBuilder *sb) {
-  StringBuilder *ret = new_sb();
-  sb_append(ret, sb->data);
-  return ret;
 }
 
 void *xmalloc(size_t size) {

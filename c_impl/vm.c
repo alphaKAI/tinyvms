@@ -77,7 +77,7 @@ TValue *vm_execute(VM *vm, Vector *code) {
     for (int i = 0; i < keys->len; i++) {
       printf("key : %s, ", keys->data[i]);
       printf("val : ");
-      tv_print(env_get(vm->env, new_sb_with_char(keys->data[i])));
+      tv_print(env_get(vm->env, keys->data[i]));
       printf("\n");
     }
     printf("vm->stack->data : %p\n", vm->stack->data);
