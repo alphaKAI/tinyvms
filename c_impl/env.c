@@ -40,7 +40,7 @@ HasPtrResult *vs_has_ptr(VariableStore *vs, sds key) {
  * 現在のインスタンス，もしくは親に，keyに対応するIValueが存在するかを判定する
  */
 bool vs_has(VariableStore *vs, sds key) {
-  bool ret = map_get(vs->store, key) == NULL;
+  bool ret = map_get(vs->store, key) != NULL ? true : false;
 
   if (vs->has_super) {
     ret |= vs_has(vs->super, key);
