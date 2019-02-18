@@ -104,7 +104,7 @@ bool tv_equals(TValue *this, TValue *that) {
     fprintf(stderr, "Con't compare with Function\n");
     exit(EXIT_FAILURE);
   case Null:
-    fprintf(stderr, "Can't compare with Null");
+    fprintf(stderr, "Can't compare with Null\n");
     exit(EXIT_FAILURE);
   }
 
