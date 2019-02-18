@@ -13,8 +13,11 @@ GENERATED = generated
 
 all: $(TARGET)
 
-$(TARGET): $(SRCS)
+$(TARGET): $(SRCS) | $(GENERATED)
 	$(CC) -o $(addprefix $(GENERATED)/, $@) $^ $(CFLAGS)
+
+$(GENERATED):
+	mkdir -p $(GENERATED)
 
 clean:
 	$(RM) $(OBJS) $(addprefix $(GENERATED)/, $(TARGET))
