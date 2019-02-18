@@ -34,7 +34,7 @@ TValue *new_TValue_with_bool(bool value) {
   return tv;
 }
 
-TValue *new_TValue_with_array(TValueArray *array) {
+TValue *new_TValue_with_array(Vector *array) {
   TValue *tv = new_TValue_with_tt(Array);
   tv->value.array = array;
   return tv;
@@ -61,7 +61,7 @@ bool tv_getBool(TValue *tv) {
   return tv->value.boolean;
 }
 
-TValueArray *tv_getArray(TValue *tv) {
+Vector *tv_getArray(TValue *tv) {
   assert(tv->tt == Array);
   return tv->value.array;
 }
@@ -85,15 +85,15 @@ bool tv_equals(TValue *this, TValue *that) {
   case Bool:
     return this->value.boolean == that->value.boolean;
   case Array: {
-    TValueArray *this_array = this->value.array;
-    TValueArray *that_array = that->value.array;
+    Vector *this_array = this->value.array;
+    Vector *that_array = that->value.array;
 
-    if (this_array->vec->len != that_array->vec->len) {
+    if (this_array->len != that_array->len) {
       return false;
     }
 
-    for (int i = 0; i < this_array->vec->len; i++) {
-      if (!tv_equals(this_array->vec->data[i], that_array->vec->data[i])) {
+    for (int i = 0; i < this_array->len; i++) {
+      if (!tv_equals(this_array->data[i], that_array->data[i])) {
         return false;
       }
     }
@@ -159,7 +159,7 @@ TValue *tv_dup(TValue *tv) {
   case Bool:
     return new_TValue_with_bool(tv->value.boolean);
   case Array:
-    return new_TValue_with_array(tva_dup(tv->value.array));
+    return new_TValue_with_array(vec_dup(tv->value.array));
   case Function:
     return new_TValue_with_func(vmf_dup(tv->value.func));
   default:
@@ -198,13 +198,13 @@ void tv_print(TValue *v) {
     printf("%s", tv_getBool(v) ? "true" : "false");
     break;
   case Array: {
-    TValueArray *array = tv_getArray(v);
+    Vector *array = tv_getArray(v);
     printf("[");
-    for (int i = 0; i < array->vec->len; i++) {
+    for (int i = 0; i < array->len; i++) {
       if (i > 0) {
         printf(", ");
       }
-      tv_print(array->vec->data[i]);
+      tv_print(array->data[i]);
     }
     printf("]");
     break;
@@ -218,34 +218,6 @@ void tv_print(TValue *v) {
     printf("null");
     break;
   }
-}
-
-TValueArray *new_TValueArray() {
-  TValueArray *array = xmalloc(sizeof(TValueArray));
-  array->vec = new_vec();
-  return array;
-}
-
-void tva_push(TValueArray *array, TValue *elem) { vec_push(array->vec, elem); }
-
-void tva_set(TValueArray *array, int idx, TValue *elem) {
-  assert(idx < array->vec->len);
-  array->vec->data[idx] = elem;
-}
-
-TValue *tva_get(TValueArray *array, int idx) {
-  assert(idx < array->vec->len);
-  return array->vec->data[idx];
-}
-
-TValueArray *tva_dup(TValueArray *array) {
-  TValueArray *ret = new_TValueArray();
-
-  for (int i = 0; i < array->vec->len; i++) {
-    tva_push(ret, tv_dup(array->vec->data[i]));
-  }
-
-  return ret;
 }
 
 VMFunction *new_VMFunction(sds func_name, Vector *func_body, Env *env) {

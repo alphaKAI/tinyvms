@@ -67,9 +67,17 @@ bool vec_union1(Vector *v, void *elem) {
   return true;
 }
 
-void *vec_get(Vector *v, int idx) {
+void *vec_get(Vector *v, long long int idx) {
   assert(idx < v->len);
   return v->data[idx];
+}
+
+Vector *vec_dup(Vector *v) {
+  Vector *vec = new_vec();
+  for (int i = 0; i < v->len; i++) {
+    vec_push(vec, v->data[i]);
+  }
+  return vec;
 }
 
 Map *new_map(void) {

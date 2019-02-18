@@ -4,12 +4,11 @@
 #include <stdlib.h>
 
 typedef struct {
-  TValueArray *array;
+  Vector *array;
   int idx;
 } TValueDeserializeResult;
 
-TValueDeserializeResult *new_TValueDeserializeResult(TValueArray *array,
-                                                     int idx) {
+TValueDeserializeResult *new_TValueDeserializeResult(Vector *array, int idx) {
   TValueDeserializeResult *ret = xmalloc(sizeof(TValueDeserializeResult));
   ret->array = array;
   ret->idx = idx;
@@ -18,7 +17,7 @@ TValueDeserializeResult *new_TValueDeserializeResult(TValueArray *array,
 
 TValueDeserializeResult *deserialize_to_tva(Vector *serialized,
                                             long long int elem_size) {
-  TValueArray *deserialized = new_TValueArray();
+  Vector *deserialized = new_vec();
   long long int idx = 0;
 
   for (; idx < serialized->len && idx < elem_size; idx++) {
@@ -26,7 +25,7 @@ TValueDeserializeResult *deserialize_to_tva(Vector *serialized,
     int vtype = (int)serialized->data[idx++];
     switch (vtype) {
     case Long:
-      tva_push(deserialized,
+      vec_push(deserialized,
                new_TValue_with_integer((long long int)serialized->data[idx++]));
       break;
     case String: {
@@ -40,11 +39,11 @@ TValueDeserializeResult *deserialize_to_tva(Vector *serialized,
       sds sb = sdsnewlen(buf, len);
       free(buf);
 
-      tva_push(deserialized, new_TValue_with_str(sb));
+      vec_push(deserialized, new_TValue_with_str(sb));
       break;
     }
     case Bool:
-      tva_push(deserialized,
+      vec_push(deserialized,
                new_TValue_with_bool((bool)serialized->data[idx++]));
       break;
     case Array: {
@@ -55,16 +54,16 @@ TValueDeserializeResult *deserialize_to_tva(Vector *serialized,
       }
 
       TValueDeserializeResult *tvdr = deserialize_to_tva(vec, len);
-      TValueArray *arr = tvdr->array;
+      Vector *arr = tvdr->array;
       idx += tvdr->idx;
-      tva_push(deserialized, new_TValue_with_array(arr));
+      vec_push(deserialized, new_TValue_with_array(arr));
       break;
     }
     case Function:
       fprintf(stderr, "Unsupported\n");
       exit(EXIT_FAILURE);
     case Null:
-      tva_push(deserialized, new_TValue());
+      vec_push(deserialized, new_TValue());
       break;
     }
   }
@@ -83,9 +82,9 @@ void procWith1Arg(Vector *code, Vector *serialized, int type,
   }
 
   TValueDeserializeResult *tvdr = deserialize_to_tva(vec, 1);
-  TValueArray *arr = tvdr->array;
-  for (long long int i = 0; i < arr->vec->len; i++) {
-    vec_push(code, arr->vec->data[i]);
+  Vector *arr = tvdr->array;
+  for (long long int i = 0; i < arr->len; i++) {
+    vec_push(code, arr->data[i]);
   }
   *idx += tvdr->idx - 1;
 }
@@ -101,9 +100,9 @@ void procWith2Arg(Vector *code, Vector *serialized, int type,
   }
 
   TValueDeserializeResult *tvdr = deserialize_to_tva(vec, 1);
-  TValueArray *arr = tvdr->array;
-  for (long long int i = 0; i < arr->vec->len; i++) {
-    vec_push(code, arr->vec->data[i]);
+  Vector *arr = tvdr->array;
+  for (long long int i = 0; i < arr->len; i++) {
+    vec_push(code, arr->data[i]);
   }
   *idx += tvdr->idx - 1;
 
@@ -116,8 +115,8 @@ void procWith2Arg(Vector *code, Vector *serialized, int type,
 
   tvdr = deserialize_to_tva(vec, 1);
   arr = tvdr->array;
-  for (int i = 0; i < arr->vec->len; i++) {
-    vec_push(code, arr->vec->data[i]);
+  for (int i = 0; i < arr->len; i++) {
+    vec_push(code, arr->data[i]);
   }
   *idx += tvdr->idx - 1;
 }

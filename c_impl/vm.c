@@ -311,23 +311,23 @@ TValue *vm_execute(VM *vm, Vector *code) {
       sds variable = tv_getString((TValue *)code->data[pc++ + 1]);
       long long int idx = tv_getBool((TValue *)vec_pop(vm->stack));
       TValue *val = (TValue *)vec_pop(vm->stack);
-      TValueArray *array = tv_getArray(env_get(vm->env, variable));
-      tva_set(array, idx, val);
+      Vector *array = tv_getArray(env_get(vm->env, variable));
+      array->data[idx] = val;
       break;
     }
     case tOpGetArrayElement: {
       sds variable = tv_getString((TValue *)code->data[pc++ + 1]);
       long long int idx = tv_getLong((TValue *)vec_pop(vm->stack));
       vec_push(vm->stack,
-               tva_get(tv_getArray(env_get(vm->env, variable)), idx));
+               vec_get(tv_getArray(env_get(vm->env, variable)), idx));
       break;
     }
     case tOpMakeArray: {
       long long int array_size = tv_getLong((TValue *)code->data[pc++ + 1]);
-      TValueArray *array = new_TValueArray();
-      vec_expand(array->vec, array_size);
+      Vector *array = new_vec();
+      vec_expand(array, array_size);
       for (int i = array_size - 1; i >= 0; i--) {
-        array->vec->data[i] = (TValue *)vec_pop(vm->stack);
+        array->data[i] = (TValue *)vec_pop(vm->stack);
       }
       vec_push(vm->stack, new_TValue_with_array(array));
       break;

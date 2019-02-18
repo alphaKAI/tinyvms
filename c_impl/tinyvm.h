@@ -23,7 +23,8 @@ void *vec_last(Vector *v);
 bool vec_contains(Vector *v, void *elem);
 bool vec_containss(Vector *v, sds key);
 bool vec_union1(Vector *v, void *elem);
-void *vec_get(Vector *v, int idx);
+void *vec_get(Vector *v, long long int idx);
+Vector *vec_dup(Vector *v);
 
 //////////////////      Map      //////////////////
 
@@ -41,7 +42,6 @@ bool map_exists(Map *map, sds key);
 
 //////////////////    env    //////////////////
 
-typedef struct TValueArray_t TValueArray;
 typedef struct TValue_t TValue;
 
 typedef struct VariableStore {
@@ -88,15 +88,11 @@ typedef struct {
   Env *env;
 } VMFunction;
 
-struct TValueArray_t {
-  Vector *vec;
-};
-
 typedef union {
   sds str;
   long long int integer;
   bool boolean;
-  TValueArray *array;
+  Vector *array;
   VMFunction *func;
 } Value;
 
@@ -110,12 +106,12 @@ TValue *new_TValue_with_tt(int tt);
 TValue *new_TValue_with_integer(long long int value);
 TValue *new_TValue_with_str(sds sb);
 TValue *new_TValue_with_bool(bool value);
-TValue *new_TValue_with_array(TValueArray *array);
+TValue *new_TValue_with_array(Vector *array);
 TValue *new_TValue_with_func(VMFunction *func);
 long long int tv_getLong(TValue *tv);
 sds tv_getString(TValue *tv);
 bool tv_getBool(TValue *tv);
-TValueArray *tv_getArray(TValue *tv);
+Vector *tv_getArray(TValue *tv);
 VMFunction *tv_getFunction(TValue *tv);
 bool tv_equals(TValue *this, TValue *that);
 int tv_cmp(TValue *this, TValue *that);
@@ -129,12 +125,6 @@ bool tv_and(TValue *a, TValue *b);
 bool tv_or(TValue *a, TValue *b);
 
 void tv_print(TValue *v);
-
-TValueArray *new_TValueArray();
-void tva_push(TValueArray *array, TValue *elem);
-void tva_set(TValueArray *array, int idx, TValue *elem);
-TValue *tva_get(TValueArray *array, int idx);
-TValueArray *tva_dup(TValueArray *array);
 
 VMFunction *new_VMFunction(sds func_name, Vector *func_body, Env *env);
 
