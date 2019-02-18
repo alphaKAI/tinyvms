@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+tinyvm=../generated/tinyvm
+target=$1
+
+if [ ! -e $target ]; then
+  echo "No such a file - $target"
+  exit
+fi
+
+if [ ! -e $tinyvm ]; then
+  echo "Not found tinyvm binary on $tinyvm"
+  echo "please make it by make command at first"
+  exit
+fi
+
+$tinyvm $target
