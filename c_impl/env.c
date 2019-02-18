@@ -147,7 +147,7 @@ Env *new_env() {
 // Make a new Env with VariableStore
 Env *new_env_with_vs(VariableStore *vs) {
   Env *env = new_env();
-  env->vs = vs;
+  env->vs = new_vs_with_super(vs);
   return env;
 }
 
