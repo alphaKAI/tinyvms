@@ -79,7 +79,7 @@ bool tv_equals(TValue *this, TValue *that) {
 
   switch (this->tt) {
   case Long:
-    return this->value.integer == this->value.integer;
+    return this->value.integer == that->value.integer;
   case String:
     return !strcmp(this->value.str, that->value.str);
   case Bool:
