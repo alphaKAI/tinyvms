@@ -132,8 +132,18 @@ int tv_cmp(TValue *this, TValue *that) {
     }
     return 1;
   }
-  case String:
-    return strcmp(this->value.str, that->value.str);
+  case String: {
+    int ret = strcmp(this->value.str, that->value.str);
+
+    if (ret == 0) {
+      return ret;
+    }
+    if (ret < 0) {
+      return -1;
+    } else {
+      return 1;
+    }
+  }
   case Bool:
     TV_COMPARISON_ERROR("Can't compare with Bool");
   case Array:
