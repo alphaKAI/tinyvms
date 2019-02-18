@@ -71,10 +71,15 @@ VMFunction *tv_getFunction(TValue *tv) {
   return tv->value.func;
 }
 
+#define TV_COMPARISON_ERROR(msg)                                               \
+  {                                                                            \
+    fprintf(stderr, "<TValue Comparison ERROR> %s\n", msg);                    \
+    exit(EXIT_FAILURE);                                                        \
+  }
+
 bool tv_equals(TValue *this, TValue *that) {
   if (this->tt != that->tt) {
-    fprintf(stderr, "Can not compare between incompatibility vtype \n");
-    exit(EXIT_FAILURE);
+    TV_COMPARISON_ERROR("Can not compare between incompatibility types");
   }
 
   switch (this->tt) {
@@ -101,11 +106,9 @@ bool tv_equals(TValue *this, TValue *that) {
     return true;
   }
   case Function:
-    fprintf(stderr, "Con't compare with Function\n");
-    exit(EXIT_FAILURE);
+    TV_COMPARISON_ERROR("Con't compare with Function");
   case Null:
-    fprintf(stderr, "Can't compare with Null\n");
-    exit(EXIT_FAILURE);
+    TV_COMPARISON_ERROR("Can't compare with Null");
   }
 
   fprintf(stderr, "Shouldn't reach here\n");
@@ -114,8 +117,7 @@ bool tv_equals(TValue *this, TValue *that) {
 
 int tv_cmp(TValue *this, TValue *that) {
   if (this->tt != that->tt) {
-    fprintf(stderr, "Can not compare between incompatibility vtype \n");
-    exit(EXIT_FAILURE);
+    TV_COMPARISON_ERROR("Can not compare between incompatibility types");
   }
 
   switch (this->tt) {
@@ -133,17 +135,13 @@ int tv_cmp(TValue *this, TValue *that) {
   case String:
     return strcmp(this->value.str, that->value.str);
   case Bool:
-    fprintf(stderr, "Can't compare with Bool\n");
-    exit(EXIT_FAILURE);
+    TV_COMPARISON_ERROR("Can't compare with Bool");
   case Array:
-    fprintf(stderr, "Can't compare with Array\n");
-    exit(EXIT_FAILURE);
+    TV_COMPARISON_ERROR("Can't compare with Array");
   case Function:
-    fprintf(stderr, "Can't compare with Function\n");
-    exit(EXIT_FAILURE);
+    TV_COMPARISON_ERROR("Can't compare with Function");
   case Null:
-    fprintf(stderr, "Can't compare with Null\n");
-    exit(EXIT_FAILURE);
+    TV_COMPARISON_ERROR("Can't compare with Null");
   }
 
   fprintf(stderr, "Shouldn't reach here\n");
