@@ -7,16 +7,16 @@
 #include <string.h>
 
 Vector *new_vec() {
-  Vector *v = malloc(sizeof(Vector));
-  v->data = malloc(sizeof(void *) * 16);
+  Vector *v = xmalloc(sizeof(Vector));
+  v->data = xmalloc(sizeof(void *) * 16);
   v->capacity = 16;
   v->len = 0;
   return v;
 }
 
-void vec_free(Vector **v_ptr) {
-  free((*v_ptr)->data);
-  free(*v_ptr);
+void free_vec(Vector **v_ptr) {
+  xfree((*v_ptr)->data);
+  xfree(*v_ptr);
   *v_ptr = NULL;
 }
 
@@ -82,16 +82,16 @@ Vector *vec_dup(Vector *v) {
 }
 
 Map *new_map(void) {
-  Map *map = malloc(sizeof(Map));
+  Map *map = xmalloc(sizeof(Map));
   map->keys = new_vec();
   map->vals = new_vec();
   return map;
 }
 
-void map_free(Map **map_ptr) {
-  vec_free(&(*map_ptr)->keys);
-  vec_free(&(*map_ptr)->vals);
-  free(*map_ptr);
+void free_map(Map **map_ptr) {
+  free_vec(&(*map_ptr)->keys);
+  free_vec(&(*map_ptr)->vals);
+  xfree(*map_ptr);
   *map_ptr = NULL;
 }
 
@@ -127,7 +127,7 @@ int map_geti(Map *map, sds key, int default_) {
   return default_;
 }
 
-void *xmalloc(size_t size) {
+inline void *xmalloc(size_t size) {
   void *ptr = malloc(size);
 
   if (ptr == NULL) {
@@ -136,6 +136,15 @@ void *xmalloc(size_t size) {
   }
 
   return ptr;
+}
+
+inline void xfree(void *ptr) {
+  if (ptr != NULL) {
+    free(ptr);
+  } else {
+    fprintf(stderr, "xfree got NULL pointer\n");
+    exit(EXIT_FAILURE);
+  }
 }
 
 #define case_printer(case_name)                                                \

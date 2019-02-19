@@ -19,6 +19,18 @@ VariableStore *new_vs_with_super(VariableStore *super) {
   return vs;
 }
 
+void free_vs(VariableStore **vs_ptr) {
+  if ((*vs_ptr)->has_super) {
+    free_vs(&(*vs_ptr)->super);
+  }
+
+  free_vec(&(*vs_ptr)->protecteds);
+  free_map(&(*vs_ptr)->store);
+  xfree(*vs_ptr);
+
+  *vs_ptr = NULL;
+}
+
 HasPtrResult *new_HasPtrResult(TValue *tv, VariableStore *vs) {
   HasPtrResult *hpr = xmalloc(sizeof(HasPtrResult));
   hpr->tv = tv;

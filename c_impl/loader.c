@@ -37,7 +37,7 @@ TValueDeserializeResult *deserialize_to_tva(Vector *serialized,
       }
 
       sds sb = sdsnewlen(buf, len);
-      free(buf);
+      xfree(buf);
 
       vec_push(deserialized, new_TValue_with_str(sb));
       break;

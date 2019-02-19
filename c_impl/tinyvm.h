@@ -14,7 +14,7 @@ typedef struct {
 } Vector;
 
 Vector *new_vec(void);
-void vec_free(Vector **v_ptr);
+void free_vec(Vector **v_ptr);
 void vec_expand(Vector *v, long long int size);
 void vec_push(Vector *v, void *elem);
 void vec_pushi(Vector *v, int val);
@@ -34,6 +34,7 @@ typedef struct {
 } Map;
 
 Map *new_map(void);
+void free_map(Map **map_ptr);
 void map_put(Map *map, sds key, void *val);
 void map_puti(Map *map, sds key, int val);
 void *map_get(Map *map, sds key);
@@ -133,6 +134,7 @@ VMFunction *vmf_dup(VMFunction *func);
 //////////////////    others     //////////////////
 
 void *xmalloc(size_t size);
+void xfree(void *ptr);
 
 // ValueType
 enum { Long, String, Bool, Array, Function, Null };
