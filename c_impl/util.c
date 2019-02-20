@@ -1,5 +1,10 @@
 #include "tinyvm.h"
 #include <assert.h>
+
+#ifdef __USE_BOEHM_GC__
+#include <gc.h>
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -23,14 +28,22 @@ void free_vec(Vector **v_ptr) {
 void vec_expand(Vector *v, long long int size) {
   if (v->len < size) {
     v->capacity = size;
+#ifdef __USE_BOEHM_GC__
+    v->data = GC_REALLOC(v->data, sizeof(void *) * v->capacity);
+#else
     v->data = realloc(v->data, sizeof(void *) * v->capacity);
+#endif
   }
 }
 
 void vec_push(Vector *v, void *elem) {
   if (v->len == v->capacity) {
     v->capacity *= 2;
+#ifdef __USE_BOEHM_GC__
+    v->data = GC_REALLOC(v->data, sizeof(void *) * v->capacity);
+#else
     v->data = realloc(v->data, sizeof(void *) * v->capacity);
+#endif
   }
   v->data[v->len++] = elem;
 }
@@ -128,7 +141,11 @@ int map_geti(Map *map, sds key, int default_) {
 }
 
 inline void *xmalloc(size_t size) {
+#ifdef __USE_BOEHM_GC__
+  void *ptr = GC_MALLOC(size);
+#else
   void *ptr = malloc(size);
+#endif
 
   if (ptr == NULL) {
     fprintf(stderr, "Failed to allocate memory <size:%ld>\n", size);
@@ -140,7 +157,11 @@ inline void *xmalloc(size_t size) {
 
 inline void xfree(void *ptr) {
   if (ptr != NULL) {
+#ifdef __USE_BOEHM_GC__
+    GC_FREE(ptr);
+#else
     free(ptr);
+#endif
   } else {
     fprintf(stderr, "xfree got NULL pointer\n");
     exit(EXIT_FAILURE);

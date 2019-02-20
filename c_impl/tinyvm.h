@@ -1,6 +1,8 @@
 #ifndef __TINY_VM_INCLUDE_GUARD__
 #define __TINY_VM_INCLUDE_GUARD__
 
+#define __USE_BOEHM_GC__
+
 #include "sds/sds.h"
 #include <stdbool.h>
 #include <stddef.h>
