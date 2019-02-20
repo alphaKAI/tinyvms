@@ -61,7 +61,7 @@ TValue *vm_stackPeekTop(VM *vm) {
     }                                                                          \
   }
 
-#define __TINYVM_DEBUG__
+//#define __TINYVM_DEBUG__
 
 #ifdef __TINYVM_DEBUG__
 #define VM_DEBUG_PRINT(vm, op)                                                 \
