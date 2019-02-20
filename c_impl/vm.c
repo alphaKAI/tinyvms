@@ -61,35 +61,354 @@ TValue *vm_stackPeekTop(VM *vm) {
     }                                                                          \
   }
 
-//#define __TINYVM_DEBUG__
+#define __TINYVM_DEBUG__
 
+#ifdef __TINYVM_DEBUG__
+#define VM_DEBUG_PRINT(vm, op)                                                 \
+  {                                                                            \
+    printf("[DEBUG]-----------------------------------------------\n");        \
+    printf("op: ");                                                            \
+    type_print(op);                                                            \
+    printf("\n");                                                              \
+    Vector *keys = vm->env->vs->store->keys;                                   \
+    printf("keys->len : %lld\n", keys->len);                                   \
+    for (int i = 0; i < keys->len; i++) {                                      \
+      printf("key : %s, ", keys->data[i]);                                     \
+      printf("val : ");                                                        \
+      tv_print(env_get(vm->env, keys->data[i]));                               \
+      printf("\n");                                                            \
+    }                                                                          \
+    printf("vm->stack->data : %p\n", vm->stack->data);                         \
+    printf("stack : [");                                                       \
+    for (int i = 0; i < vm->stack->len; i++) {                                 \
+      if (i > 0) {                                                             \
+        printf(", ");                                                          \
+      }                                                                        \
+      tv_print(vm->stack->data[i]);                                            \
+    }                                                                          \
+    printf("]\n");                                                             \
+  }
+#else
+#define VM_DEBUG_PRINT(vm, op)
+#endif
+
+#define __ENABLE_DIRECT_THREADED_CODE__
+
+#ifdef __ENABLE_DIRECT_THREADED_CODE__
+TValue *vm_execute(VM *vm, Vector *code) {
+  size_t pc = 0;
+  long long int op = 0;
+
+  static void *table[] = {&&L_tOpVariableDeclareOnlySymbol,
+                          &&L_tOpVariableDeclareWithAssign,
+                          &&L_tOpPop,
+                          &&L_tOpPush,
+                          &&L_tOpAdd,
+                          &&L_tOpSub,
+                          &&L_tOpMul,
+                          &&L_tOpDiv,
+                          &&L_tOpMod,
+                          &&L_tOpReturn,
+                          &&L_tOpGetVariable,
+                          &&L_tOpSetVariablePop,
+                          &&L_tOpSetArrayElement,
+                          &&L_tOpGetArrayElement,
+                          &&L_tOpMakeArray,
+                          &&L_tOpCall,
+                          &&L_tOpNop,
+                          &&L_tOpFunctionDeclare,
+                          &&L_tOpEqualExpression,
+                          &&L_tOpNotEqualExpression,
+                          &&L_tOpLtExpression,
+                          &&L_tOpLteExpression,
+                          &&L_tOpGtExpression,
+                          &&L_tOpGteExpression,
+                          &&L_tOpAndExpression,
+                          &&L_tOpOrExpression,
+                          &&L_tOpXorExpression,
+                          &&L_tOpJumpRel,
+                          &&L_tOpJumpAbs,
+                          &&L_tOpPrint,
+                          &&L_tOpPrintln,
+                          &&L_tOpIFStatement,
+                          &&L_tOpAssignExpression,
+                          &&L_tOpAssert,
+                          &&L_tIValue};
+
+  long long int table_len = sizeof(table) / sizeof(table[0]);
+
+  void **ops_ptr = xmalloc(sizeof(void *) * (code->len + 1));
+  for (int j = 0; j < code->len; j++) {
+    long long int idx = (long long int)code->data[j];
+    if (idx < table_len) {
+      ops_ptr[j] = table[idx];
+    }
+  }
+  ops_ptr[code->len] = &&L_end;
+
+#define DTHC_CASE(op_name, proc_code)                                          \
+  L_##op_name : {                                                              \
+    VM_DEBUG_PRINT(vm, op);                                                    \
+    proc_code;                                                                 \
+    pc++;                                                                      \
+    goto *ops_ptr[pc];                                                         \
+  }
+
+  /* L_start */
+  op = (long long int)code->data[0];
+  goto *table[op];
+
+  DTHC_CASE(tOpVariableDeclareOnlySymbol, {
+    TValue *symbol = (TValue *)code->data[pc++ + 1];
+    env_def(vm->env, tv_getString(symbol), new_TValue());
+  })
+
+  DTHC_CASE(tOpVariableDeclareWithAssign, {
+    TValue *symbol = (TValue *)code->data[pc++ + 1];
+    TValue *v = (TValue *)vec_pop(vm->stack);
+    env_def(vm->env, tv_getString(symbol), v);
+  })
+
+  DTHC_CASE(tOpAssignExpression, {
+    TValue *symbol = (TValue *)code->data[pc++ + 1];
+    TValue *v = (TValue *)vec_pop(vm->stack);
+    env_def(vm->env, tv_getString(symbol), v);
+  })
+
+  DTHC_CASE(tOpPush, {
+    TValue *v = (TValue *)code->data[pc++ + 1];
+    VM_ASSERT(v != NULL, "Execute Error on tOpPush");
+    vec_push(vm->stack, v);
+  })
+
+  DTHC_CASE(tOpPop, { vec_pop(vm->stack); })
+
+  DTHC_CASE(tOpAdd, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    VM_ASSERT0(a->tt == b->tt && a->tt == Long);
+    vec_push(vm->stack,
+             new_TValue_with_integer(a->value.integer + b->value.integer));
+  })
+
+  DTHC_CASE(tOpSub, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    assert(a->tt == b->tt && a->tt == Long);
+    vec_push(vm->stack,
+             new_TValue_with_integer(a->value.integer - b->value.integer));
+  })
+
+  DTHC_CASE(tOpMul, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    assert(a->tt == b->tt && a->tt == Long);
+    vec_push(vm->stack,
+             new_TValue_with_integer(a->value.integer * b->value.integer));
+  })
+
+  DTHC_CASE(tOpDiv, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    assert(a->tt == b->tt && a->tt == Long);
+    vec_push(vm->stack,
+             new_TValue_with_integer(a->value.integer / b->value.integer));
+  })
+
+  DTHC_CASE(tOpMod, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    assert(a->tt == b->tt && a->tt == Long);
+    vec_push(vm->stack,
+             new_TValue_with_integer(a->value.integer % b->value.integer));
+  })
+
+  DTHC_CASE(tOpReturn, { return vm_stackPeekTop(vm); })
+
+  DTHC_CASE(tOpGetVariable, {
+    TValue *v = (TValue *)code->data[pc++ + 1];
+    VM_ASSERT(v != NULL, "Execute Error on tOpGetVariable");
+    HasPtrResult *ptr = env_has_ptr(vm->env, tv_getString(v));
+    if (ptr->tv != NULL) {
+      vec_push(vm->stack, ptr->tv);
+    } else {
+      fprintf(stderr, "No such a variable %s", tv_getString(v));
+      exit(EXIT_FAILURE);
+    }
+  })
+
+  DTHC_CASE(tOpSetVariablePop, {
+    TValue *dst = (TValue *)code->data[pc++ + 1];
+    TValue *v = (TValue *)vec_pop(vm->stack);
+    env_set(vm->env, tv_getString(dst), v);
+  })
+
+  DTHC_CASE(tOpCall, {
+    TValue *func = (TValue *)code->data[pc++ + 1];
+    sds fname = tv_getString(func);
+    Env *cpyEnv = vm->env;
+    vm->env = env_dup(tv_getFunction(env_get(vm->env, fname))->env);
+    vm_execute(vm, tv_getFunction(env_get(cpyEnv, fname))->func_body);
+    vm->env = cpyEnv;
+  })
+
+  DTHC_CASE(tOpNop, {})
+
+  DTHC_CASE(tOpFunctionDeclare, {
+    TValue *symbol = (TValue *)code->data[pc++ + 1];
+    sds func_name = tv_getString(symbol);
+    TValue *op_blocks_length = (TValue *)code->data[pc++ + 1];
+    Vector *func_body = new_vec();
+    for (int i = 0; i < tv_getLong(op_blocks_length); i++) {
+      vec_push(func_body, code->data[pc++ + 1]);
+    }
+    env_def(vm->env, func_name,
+            new_TValue_with_func(
+                new_VMFunction(func_name, func_body, env_dup(vm->env))));
+  })
+
+  DTHC_CASE(tOpEqualExpression, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    vec_push(vm->stack, new_TValue_with_bool(tv_equals(a, b)));
+  })
+
+  DTHC_CASE(tOpNotEqualExpression, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    vec_push(vm->stack, new_TValue_with_bool(!tv_equals(a, b)));
+  })
+
+  DTHC_CASE(tOpLtExpression, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    vec_push(vm->stack, new_TValue_with_bool(tv_lt(a, b)));
+  })
+  DTHC_CASE(tOpLteExpression, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    vec_push(vm->stack, new_TValue_with_bool(tv_lte(a, b)));
+  })
+
+  DTHC_CASE(tOpGtExpression, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    vec_push(vm->stack, new_TValue_with_bool(tv_gt(a, b)));
+  })
+
+  DTHC_CASE(tOpGteExpression, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    vec_push(vm->stack, new_TValue_with_bool(tv_gte(a, b)));
+  })
+
+  DTHC_CASE(tOpAndExpression, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    vec_push(vm->stack, new_TValue_with_bool(tv_and(a, b)));
+  })
+
+  DTHC_CASE(tOpOrExpression, {
+    TValue *a = (TValue *)vec_pop(vm->stack);
+    TValue *b = (TValue *)vec_pop(vm->stack);
+    vec_push(vm->stack, new_TValue_with_bool(tv_or(a, b)));
+  })
+
+  DTHC_CASE(tOpXorExpression, { VM_ERROR("Not implemented <XOR>"); })
+
+  DTHC_CASE(tOpPrint, {
+    TValue *v = (TValue *)vec_pop(vm->stack);
+    tv_print(v);
+  })
+
+  DTHC_CASE(tOpPrintln, {
+    TValue *v = (TValue *)vec_pop(vm->stack);
+    tv_print(v);
+    printf("\n");
+  })
+
+  DTHC_CASE(tOpJumpRel, {
+    TValue *v = (TValue *)code->data[pc++ + 1];
+    pc += tv_getLong(v);
+  })
+
+  DTHC_CASE(tOpJumpAbs, {
+    TValue *v = (TValue *)code->data[pc++ + 1];
+    pc = tv_getLong(v);
+  })
+
+  DTHC_CASE(tOpIFStatement, {
+    TValue *cond = (TValue *)vec_pop(vm->stack);
+    bool condResult;
+    switch (cond->tt) {
+    case Long:
+      condResult = tv_getLong(cond) != 0;
+      break;
+    case Bool:
+      condResult = tv_getBool(cond);
+      break;
+    case String:
+      VM_ERROR("Execute Error Invalid Condition <string>");
+    case Array:
+      VM_ERROR("Execute Error Invalid Condition <array>");
+    case Function:
+      VM_ERROR("Execute Error Invalid Condition <function>");
+    case Null:
+      condResult = false;
+      break;
+    }
+
+    long long int trueBlockLength = tv_getLong((TValue *)code->data[pc++ + 1]);
+
+    if (!condResult) {
+      pc += trueBlockLength;
+    }
+  })
+
+  DTHC_CASE(tOpSetArrayElement, {
+    sds variable = tv_getString((TValue *)code->data[pc++ + 1]);
+    long long int idx = tv_getLong((TValue *)vec_pop(vm->stack));
+    TValue *val = (TValue *)vec_pop(vm->stack);
+    Vector *array = tv_getArray(env_get(vm->env, variable));
+    array->data[idx] = val;
+  })
+
+  DTHC_CASE(tOpGetArrayElement, {
+    sds variable = tv_getString((TValue *)code->data[pc++ + 1]);
+    long long int idx = tv_getLong((TValue *)vec_pop(vm->stack));
+    vec_push(vm->stack, vec_get(tv_getArray(env_get(vm->env, variable)), idx));
+  })
+
+  DTHC_CASE(tOpMakeArray, {
+    long long int array_size = tv_getLong((TValue *)code->data[pc++ + 1]);
+    Vector *array = new_vec();
+    vec_expand(array, array_size);
+    for (int i = array_size - 1; i >= 0; i--) {
+      array->data[i] = (TValue *)vec_pop(vm->stack);
+    }
+    vec_push(vm->stack, new_TValue_with_array(array));
+  })
+
+  DTHC_CASE(tIValue, { VM_ERROR("TValue* should not peek directly"); })
+
+  DTHC_CASE(tOpAssert, {
+    sds msg = tv_getString((TValue *)vec_pop(vm->stack));
+    bool result = tv_getBool((TValue *)vec_pop(vm->stack));
+    if (!result) {
+      VM_ERROR(msg);
+    }
+  })
+
+L_end:
+  return vm_stackPeekTop(vm);
+}
+#else
 TValue *vm_execute(VM *vm, Vector *code) {
   for (long long int pc = 0; pc < code->len; pc++) {
     int op = (int)code->data[pc];
 
-#ifdef __TINYVM_DEBUG__
-    printf("[DEBUG]-----------------------------------------------\n");
-    printf("op: ");
-    type_print(op);
-    printf("\n");
-    Vector *keys = vm->env->vs->store->keys;
-    printf("keys->len : %lld\n", keys->len);
-    for (int i = 0; i < keys->len; i++) {
-      printf("key : %s, ", keys->data[i]);
-      printf("val : ");
-      tv_print(env_get(vm->env, keys->data[i]));
-      printf("\n");
-    }
-    printf("vm->stack->data : %p\n", vm->stack->data);
-    printf("stack : [");
-    for (int i = 0; i < vm->stack->len; i++) {
-      if (i > 0) {
-        printf(", ");
-      }
-      tv_print(vm->stack->data[i]);
-    }
-    printf("]\n");
-#endif
+    VM_DEBUG_PRINT(vm, op);
+
     switch (op) {
     case tOpVariableDeclareOnlySymbol: {
       TValue *symbol = (TValue *)code->data[pc++ + 1];
@@ -309,7 +628,7 @@ TValue *vm_execute(VM *vm, Vector *code) {
     }
     case tOpSetArrayElement: {
       sds variable = tv_getString((TValue *)code->data[pc++ + 1]);
-      long long int idx = tv_getBool((TValue *)vec_pop(vm->stack));
+      long long int idx = tv_getLong((TValue *)vec_pop(vm->stack));
       TValue *val = (TValue *)vec_pop(vm->stack);
       Vector *array = tv_getArray(env_get(vm->env, variable));
       array->data[idx] = val;
@@ -348,6 +667,7 @@ TValue *vm_execute(VM *vm, Vector *code) {
   }
   return vm_stackPeekTop(vm);
 }
+#endif
 
 void code_printer(Vector *code) {
   printf("=====================================================\n");
