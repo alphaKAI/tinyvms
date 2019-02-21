@@ -3,6 +3,7 @@
 
 #define __USE_BOEHM_GC__
 
+#include "avl.h"
 #include "sds/sds.h"
 #include <stdbool.h>
 #include <stddef.h>
@@ -16,7 +17,6 @@ typedef struct {
 } Vector;
 
 Vector *new_vec(void);
-void free_vec(Vector **v_ptr);
 void vec_expand(Vector *v, long long int size);
 void vec_push(Vector *v, void *elem);
 void vec_pushi(Vector *v, int val);
@@ -31,16 +31,13 @@ Vector *vec_dup(Vector *v);
 //////////////////      Map      //////////////////
 
 typedef struct {
-  Vector *keys;
-  Vector *vals;
+  AVLTree *tree;
 } Map;
 
 Map *new_map(void);
-void free_map(Map **map_ptr);
 void map_put(Map *map, sds key, void *val);
 void map_puti(Map *map, sds key, int val);
 void *map_get(Map *map, sds key);
-int map_geti(Map *map, sds key, int default_);
 bool map_exists(Map *map, sds key);
 
 //////////////////    env    //////////////////
@@ -197,4 +194,5 @@ TValue *vm_execute(VM *vm, Vector *code);
 
 void type_print(int type);
 void code_printer(Vector *code);
+
 #endif

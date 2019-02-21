@@ -19,12 +19,6 @@ Vector *new_vec() {
   return v;
 }
 
-void free_vec(Vector **v_ptr) {
-  xfree((*v_ptr)->data);
-  xfree(*v_ptr);
-  *v_ptr = NULL;
-}
-
 void vec_expand(Vector *v, long long int size) {
   if (v->len < size) {
     v->capacity = size;
@@ -96,30 +90,23 @@ Vector *vec_dup(Vector *v) {
 
 Map *new_map(void) {
   Map *map = xmalloc(sizeof(Map));
-  map->keys = new_vec();
-  map->vals = new_vec();
+  map->tree = new_AVLTree();
   return map;
 }
 
-void free_map(Map **map_ptr) {
-  free_vec(&(*map_ptr)->keys);
-  free_vec(&(*map_ptr)->vals);
-  xfree(*map_ptr);
-  *map_ptr = NULL;
+static int map_compare(sds a, sds b) {
+  int ret = strcmp(a, b);
+  if (ret < 0) {
+    return -1;
+  } else if (ret == 0) {
+    return 0;
+  } else {
+    return 1;
+  }
 }
 
 void map_put(Map *map, sds key, void *val) {
-  long long idx = 0;
-
-  for (; idx < map->keys->len; idx++) {
-    if (!strcmp(map->keys->data[idx], key)) {
-      map->vals->data[idx] = val;
-      return;
-    }
-  }
-
-  vec_push(map->keys, key);
-  vec_push(map->vals, val);
+  avl_insert(map->tree, key, val, (ELEM_COMPARE)&map_compare);
 }
 
 void map_puti(Map *map, sds key, int val) {
@@ -127,17 +114,7 @@ void map_puti(Map *map, sds key, int val) {
 }
 
 void *map_get(Map *map, sds key) {
-  for (int i = map->keys->len - 1; i >= 0; i--)
-    if (!strcmp(map->keys->data[i], key))
-      return map->vals->data[i];
-  return NULL;
-}
-
-int map_geti(Map *map, sds key, int default_) {
-  for (int i = map->keys->len - 1; i >= 0; i--)
-    if (!strcmp(map->keys->data[i], key))
-      return (intptr_t)map->vals->data[i];
-  return default_;
+  return avl_find(map->tree, key, (ELEM_COMPARE)&map_compare);
 }
 
 inline void *xmalloc(size_t size) {
