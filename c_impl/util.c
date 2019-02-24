@@ -22,6 +22,7 @@ Vector *new_vec() {
 void vec_expand(Vector *v, long long int size) {
   if (v->len < size) {
     v->capacity = size;
+    v->len = size;
 #ifdef __USE_BOEHM_GC__
     v->data = GC_REALLOC(v->data, sizeof(void *) * v->capacity);
 #else

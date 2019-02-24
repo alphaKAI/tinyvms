@@ -25,27 +25,34 @@ TEST_CASE(test_bool, {
 })
 
 TEST_CASE(test_array, {
-  Vector *array = new_vec();
+  Vector *vec = new_vec();
 
   for (int i = 0; i < 10; i++) {
-    vec_push(array, new_TValue_with_integer(i));
+    vec_push(vec, new_TValue_with_integer(i));
   }
+
+  TValue *array = new_TValue_with_array(vec);
+  Vector *tv_array = tv_getArray(array);
 
   for (int i = 0; i < 10; i++) {
-    assert(tv_getLong(array->data[i]) == i);
+    assert(tv_getLong(tv_array->data[i]) == i);
   }
 
-  array = new_vec();
+  vec = new_vec();
   size_t strs_len = 3;
   sds *strs = xmalloc(sizeof(sds) * strs_len);
   strs[0] = sdsnew("abc");
   strs[1] = sdsnew("def");
   strs[2] = sdsnew("ghi");
   for (size_t i = 0; i < strs_len; i++) {
-    vec_push(array, new_TValue_with_str(strs[i]));
+    vec_push(vec, new_TValue_with_str(strs[i]));
   }
+
+  array = new_TValue_with_array(vec);
+  tv_array = tv_getArray(array);
+
   for (size_t i = 0; i < strs_len; i++) {
-    assert(tv_equals(array->data[i], new_TValue_with_str(strs[i])));
+    assert(tv_equals(tv_array->data[i], new_TValue_with_str(strs[i])));
   }
 })
 
